@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>猟友会 らくらく写真帳</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- exifr CDN for EXIF parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.js"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen p-6">
+    <div class="max-w-5xl mx-auto">
+        <!-- ヘッダー（右上にマニュアルボタン配置） -->
+        <header class="bg-white shadow rounded-xl p-6 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-700">猟友会 らくらく写真帳</h1>
+                <p class="text-sm text-slate-500 mt-1">デジカメの写真をドロップするだけで、撮影日時をもとに個体ごとにグループ化し、写真帳レイアウトを作成します。</p>
+            </div>
+            <a href="manual.pdf" target="_blank" rel="noopener noreferrer" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm transition flex items-center gap-2 shrink-0 self-start sm:self-center">
+                <svg class="w-5 h-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                操作マニュアルを開く
+            </a>
+        </header>
+
+        <!-- アップロードエリア -->
+        <div id="drop-zone" class="bg-white border-2 border-dashed border-slate-300 rounded-xl p-8 text-center mb-4 hover:border-emerald-500 transition cursor-pointer">
+            <svg class="w-12 h-12 mx-auto text-slate-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            <p class="text-lg font-medium text-slate-700">ここにデジカメの写真をドラッグ＆ドロップ</p>
+            <p class="text-sm text-slate-400 mt-1">または、クリックしてファイルを選択（複数選択可）</p>
+            <input type="file" id="file-input" multiple accept="image/*" class="hidden">
+        </div>
+
+        <!-- アップロードエリアの下に「前回の作業ファイルを開く」ボタンを配置 -->
+        <div class="bg-white shadow rounded-xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 border border-slate-200">
+            <div>
+                <span class="text-sm font-bold text-slate-700">前回の続きから始める場合：</span>
+                <p class="text-xs text-slate-500 mt-0.5">※先に上のエリアへ写真ファイルをドロップしてから、保存ファイルを選んでください。</p>
+            </div>
+            <label class="bg-slate-700 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold shadow transition flex items-center gap-2 text-sm cursor-pointer">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                前回の作業ファイル（.json）を開く
+                <input type="file" id="load-project-input" accept=".json" class="hidden">
+            </label>
+        </div>
+
+        <!-- コントロールバー -->
+        <div id="controls" class="hidden bg-white shadow rounded-xl p-4 mb-6 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center gap-4">
+                    <div>
+                        <label class="text-sm font-bold text-slate-600 mr-2">グループ判定間隔:</label>
+                        <select id="time-threshold" class="border rounded px-3 py-1.5 text-sm bg-slate-50">
+                            <option value="5">5分以内</option>
+                            <option value="15" selected>15分以内</option>
+                            <option value="30">30分以内</option>
+                            <option value="60">60分以内</option>
+                        </select>
+                    </div>
+                    <button id="re-group-btn" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-1.5 rounded text-sm font-medium transition">再グループ化</button>
+                </div>
+                <p class="text-xs text-slate-500">※Exif日時がない写真や誤ってまとまった写真は、各写真下の「上のグループへ」「下のグループへ」「別個体へ分割」で手動整理できます。</p>
+            </div>
+
+            <!-- 種類ごとの初期値設定パネル -->
+            <div class="border-t pt-3">
+                <p class="text-xs font-bold text-slate-500 mb-2">【種類ごとの初期値設定（前回の続きから始める場合に変更してください）】</p>
+                <div id="start-settings-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    <!-- JSで動的生成 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- グループ一覧コンテナ -->
+        <div id="groups-container" class="space-y-6"></div>
+
+        <!-- 最下部に配置された一括アクションバー -->
+        <div id="bottom-action-bar" class="hidden mt-8 bg-white shadow-lg border-2 border-emerald-500 rounded-xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+                <h3 class="text-base font-bold text-slate-700">お疲れ様でした！写真の選択・確認が終わったら</h3>
+                <p class="text-xs text-slate-500 mt-0.5">撮り忘れ（写真なし）の追加や、作業の保存・印刷がここから行えます。</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+                <button id="open-empty-modal-btn" class="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-bold shadow transition flex items-center gap-2 text-sm">
+                    <span>＋ 写真なしの整理</span>
+                </button>
+                <button id="save-project-btn-bottom" class="bg-sky-600 hover:bg-sky-700 text-white px-5 py-2.5 rounded-xl font-bold shadow transition flex items-center gap-2 text-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                    作業を保存
+                </button>
+                <button id="print-btn-bottom" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-bold shadow transition flex items-center gap-2 text-base">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                    写真帳を印刷・PDF出力
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 写真なしの整理・追加専用モーダル画面 -->
+    <div id="empty-manager-modal" class="hidden fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+            <!-- モーダルヘッダー -->
+            <div class="bg-slate-800 text-white p-5 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-bold">写真なしの整理（欠番・記録の追加）</h2>
+                    <p class="text-xs text-slate-300 mt-0.5">写真を確認しながら、目的の場所のすぐ下に「写真なし」を追加したり並び替えができます。</p>
+                </div>
+                <button id="close-empty-modal-btn" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition">閉じる</button>
+            </div>
+
+            <!-- モーダル内：動物種類フィルターボタン（横1列） -->
+            <div class="p-4 bg-slate-100 border-b">
+                <span class="block text-xs font-bold text-slate-500 mb-2">▼ 表示・編集する動物の種類を選択：</span>
+                <div id="modal-filter-buttons" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+                    <!-- JSで動的生成 -->
+                </div>
+            </div>
+
+            <!-- モーダル内：登録一覧 ＆ 追加エリア -->
+            <div class="p-6 flex-1 overflow-y-auto space-y-4">
+                <div class="flex items-center justify-between bg-amber-50 border border-amber-200 p-4 rounded-xl">
+                    <div>
+                        <span id="current-filter-name" class="font-bold text-amber-900 text-base">【シカ】</span>
+                        <p class="text-xs text-amber-700 mt-0.5">一番上または各行のボタンから、お好きな位置に「写真なしの個体」を追加できます。</p>
+                    </div>
+                    <button id="modal-add-top-btn" class="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-bold shadow transition text-sm">
+                        ＋ 最上部に写真なしを追加
+                    </button>
+                </div>
+
+                <hr class="my-2">
+
+                <h4 class="text-sm font-bold text-slate-700">現在の登録一覧（写真プレビュー確認 ＆ 位置調整）：</h4>
+                <div id="modal-animal-list" class="space-y-3">
+                    <!-- JSで動的生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 画像拡大表示用モーダル（ライトボックス） -->
+    <div id="image-lightbox-modal" class="hidden fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 cursor-pointer">
+        <div class="relative max-w-5xl max-h-[90vh] flex flex-col items-center">
+            <img id="lightbox-img" src="" class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl bg-black">
+            <p id="lightbox-caption" class="text-white text-sm font-medium mt-3 bg-slate-800/80 px-4 py-1.5 rounded-full"></p>
+            <span class="absolute top-2 right-2 text-white bg-slate-700/80 hover:bg-slate-600 w-9 h-9 rounded-full flex items-center justify-center font-bold text-lg">✕</span>
+        </div>
+    </div>
+
+    <!-- アプリケーションロジック -->
+    <script>
+        const ANIMAL_TYPES = [
+            { id: 'deer', name: 'シカ', max: 3 },
+            { id: 'raccoon', name: 'アライグマ', max: 2 },
+            { id: 'fox', name: 'キツネ', max: 2 },
+            { id: 'tanuki', name: 'タヌキ', max: 2 },
+            { id: 'rabbit', name: 'ウサギ', max: 2 },
+            { id: 'crow', name: 'カラス', max: 2 },
+            { id: 'pigeon', name: 'ハト', max: 2 }
+        ];
+
+        let rawPhotos = [];
+        let groups = [];
+        let activeModalFilterType = 'deer';
+        
+        let startSettings = {
+            deer: { num: 1, ctrl: '' },
+            raccoon: { num: 1, ctrl: '' },
+            fox: { num: 1, ctrl: '' },
+            tanuki: { num: 1, ctrl: '' },
+            rabbit: { num: 1, ctrl: '' },
+            crow: { num: 1, ctrl: '' },
+            pigeon: { num: 1, ctrl: '' }
+        };
+
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const controls = document.getElementById('controls');
+        const bottomActionBar = document.getElementById('bottom-action-bar');
+        const groupsContainer = document.getElementById('groups-container');
+        const reGroupBtn = document.getElementById('re-group-btn');
+        const printBtnBottom = document.getElementById('print-btn-bottom');
+        const saveProjectBtnBottom = document.getElementById('save-project-btn-bottom');
+        const loadProjectInput = document.getElementById('load-project-input');
+        const thresholdSelect = document.getElementById('time-threshold');
+        const startSettingsContainer = document.getElementById('start-settings-container');
+
+        const modal = document.getElementById('empty-manager-modal');
+        const openEmptyModalBtn = document.getElementById('open-empty-modal-btn');
+        const closeEmptyModalBtn = document.getElementById('close-empty-modal-btn');
+        const modalFilterButtons = document.getElementById('modal-filter-buttons');
+        const modalAddTopBtn = document.getElementById('modal-add-top-btn');
+        const modalAnimalList = document.getElementById('modal-animal-list');
+        const currentFilterName = document.getElementById('current-filter-name');
+
+        const lightboxModal = document.getElementById('image-lightbox-modal');
+        const lightboxImg = document.getElementById('lightbox-img');
+        const lightboxCaption = document.getElementById('lightbox-caption');
+
+        function renderStartSettings() {
+            startSettingsContainer.innerHTML = '';
+            ANIMAL_TYPES.forEach(animal => {
+                const setting = startSettings[animal.id];
+                const div = document.createElement('div');
+                div.className = 'bg-slate-50 p-3 rounded-lg border border-slate-200 flex flex-col gap-2';
+                div.innerHTML = `
+                    <span class="text-sm font-bold text-slate-700 text-center border-b pb-1 bg-slate-100 rounded">${animal.name}</span>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-0.5">駆除番号(共通ベース)</label>
+                        <input type="text" value="${setting.ctrl}" data-setting-type="${animal.id}" data-setting-field="ctrl" placeholder="例: 05-" class="start-setting-input w-full text-center border-2 rounded-md py-1.5 text-sm bg-white font-medium focus:border-emerald-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-0.5">開始番号</label>
+                        <input type="number" min="1" value="${setting.num}" data-setting-type="${animal.id}" data-setting-field="num" class="start-setting-input w-full text-center border-2 rounded-md py-1.5 text-sm font-bold bg-white focus:border-emerald-500 focus:outline-none">
+                    </div>
+                `;
+                startSettingsContainer.appendChild(div);
+            });
+
+            document.querySelectorAll('.start-setting-input').forEach(input => {
+                input.addEventListener('input', (e) => {
+                    const type = e.target.dataset.settingType;
+                    const field = e.target.dataset.settingField;
+                    if (field === 'num') {
+                        startSettings[type].num = parseInt(e.target.value) || 1;
+                    } else {
+                        startSettings[type].ctrl = e.target.value;
+                    }
+                    updateGroupNumbersAndControlNums();
+                    renderGroups();
+                });
+            });
+        }
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-emerald-500', 'bg-emerald-50/50'); });
+        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('border-emerald-500', 'bg-emerald-50/50'); });
+        dropZone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-emerald-500', 'bg-emerald-50/50');
+            if (e.dataTransfer.files.length > 0) {
+                await handleFiles(e.dataTransfer.files);
+            }
+        });
+        fileInput.addEventListener('change', async (e) => {
+            if (e.target.files.length > 0) {
+                await handleFiles(e.target.files);
+            }
+        });
+
+        reGroupBtn.addEventListener('click', () => {
+            if (rawPhotos.length > 0) buildGroups();
+        });
+
+        printBtnBottom.addEventListener('click', () => {
+            window.print();
+        });
+
+        openEmptyModalBtn.addEventListener('click', () => {
+            modal.classList.remove('hidden');
+            renderModalContent();
+        });
+        closeEmptyModalBtn.addEventListener('click', () => {
+            modal.classList.add('hidden');
+            renderGroups();
+        });
+
+        modalAddTopBtn.addEventListener('click', () => {
+            groups.unshift({
+                photos: [],
+                type: activeModalFilterType,
+                controlNumber: '',
+                selectedIndices: [],
+                isEmpty: true
+            });
+            updateGroupNumbersAndControlNums();
+            renderModalContent();
+        });
+
+        lightboxModal.addEventListener('click', () => {
+            lightboxModal.classList.add('hidden');
+        });
+
+        function openLightbox(url, caption) {
+            lightboxImg.src = url;
+            lightboxCaption.textContent = caption;
+            lightboxModal.classList.remove('hidden');
+        }
+
+        function renderModalContent() {
+            modalFilterButtons.innerHTML = '';
+            ANIMAL_TYPES.forEach(a => {
+                const isActive = activeModalFilterType === a.id;
+                const btnClass = isActive
+                    ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-400'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300';
+                modalFilterButtons.innerHTML += `
+                    <button type="button" data-modal-filter="${a.id}" class="py-2 px-2 rounded-xl text-sm font-bold transition text-center ${btnClass}">
+                        ${a.name}
+                    </button>
+                `;
+            });
+
+            const currentAnimal = ANIMAL_TYPES.find(a => a.id === activeModalFilterType);
+            currentFilterName.textContent = `【${currentAnimal.name}】`;
+
+            document.querySelectorAll('[data-modal-filter]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    activeModalFilterType = e.target.dataset.modalFilter;
+                    renderModalContent();
+                });
+            });
+
+            modalAnimalList.innerHTML = '';
+            const filteredGroups = groups.map((g, idx) => ({ group: g, index: idx })).filter(item => item.group.type === activeModalFilterType);
+
+            if (filteredGroups.length === 0) {
+                modalAnimalList.innerHTML = '<p class="text-sm text-slate-400 py-3 text-center">この動物のデータはまだありません。</p>';
+                return;
+            }
+
+            filteredGroups.forEach(item => {
+                const g = item.group;
+                const idx = item.index;
+                const div = document.createElement('div');
+
+                let thumbsHtml = '';
+                if (!g.isEmpty) {
+                    g.photos.forEach((p, pIdx) => {
+                        if (g.selectedIndices[pIdx]) {
+                            thumbsHtml += `<img src="${p.url}" data-lightbox-url="${p.url}" data-lightbox-cap="${g.controlNumber ? '駆除番号: ' + g.controlNumber : '連番: No.' + g.serialNumber} (${p.name})" class="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80 transition shadow-sm" title="クリックで拡大">`;
+                        }
+                    });
+                } else {
+                    thumbsHtml = `<span class="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded">⚠️ 撮影写真なし（欠番）</span>`;
+                }
+
+                div.className = g.isEmpty
+                    ? 'bg-amber-50/80 border-2 border-amber-300 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3'
+                    : 'bg-white border p-4 rounded-xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3';
+
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="bg-slate-700 text-white font-bold px-3 py-1.5 rounded-lg text-sm shrink-0">No.${g.serialNumber}</span>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            ${thumbsHtml}
+                        </div>
+                        <div class="text-xs text-slate-500 ml-2">
+                            <span class="font-bold text-slate-700 block">${g.controlNumber ? '駆除番号: ' + g.controlNumber : '駆除番号なし'}</span>
+                            <span>${g.isEmpty ? '写真なし枠' : g.photos.filter((_, i) => g.selectedIndices[i]).length + '枚採用'}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                        <button type="button" data-insert-below="${idx}" class="bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold shadow transition" title="このすぐ下に写真なしを追加">
+                            ＋ 写真なし追加
+                        </button>
+                        <button type="button" data-modal-up="${idx}" class="bg-white border hover:bg-slate-100 px-2.5 py-1.5 rounded-lg text-xs font-bold">↑ 上</button>
+                        <button type="button" data-modal-down="${idx}" class="bg-white border hover:bg-slate-100 px-2.5 py-1.5 rounded-lg text-xs font-bold">↓ 下</button>
+                        ${g.isEmpty ? `<button type="button" data-modal-del="${idx}" class="bg-rose-100 text-rose-700 hover:bg-rose-200 px-2.5 py-1.5 rounded-lg text-xs font-bold">削除</button>` : ''}
+                    </div>
+                `;
+                modalAnimalList.appendChild(div);
+            });
+
+            modalAnimalList.querySelectorAll('[data-lightbox-url]').forEach(img => {
+                img.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openLightbox(img.dataset.lightboxUrl, img.dataset.lightboxCap);
+                });
+            });
+
+            document.querySelectorAll('[data-insert-below]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const idx = parseInt(e.target.dataset.insertBelow);
+                    groups.splice(idx + 1, 0, {
+                        photos: [],
+                        type: activeModalFilterType,
+                        controlNumber: '',
+                        selectedIndices: [],
+                        isEmpty: true
+                    });
+                    updateGroupNumbersAndControlNums();
+                    renderModalContent();
+                });
+            });
+
+            document.querySelectorAll('[data-modal-up]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const idx = parseInt(e.target.dataset.modalUp);
+                    if (idx > 0) {
+                        const temp = groups[idx];
+                        groups[idx] = groups[idx - 1];
+                        groups[idx - 1] = temp;
+                        updateGroupNumbersAndControlNums();
+                        renderModalContent();
+                    }
+                });
+            });
+            document.querySelectorAll('[data-modal-down]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const idx = parseInt(e.target.dataset.modalDown);
+                    if (idx < groups.length - 1) {
+                        const temp = groups[idx];
+                        groups[idx] = groups[idx + 1];
+                        groups[idx + 1] = temp;
+                        updateGroupNumbersAndControlNums();
+                        renderModalContent();
+                    }
+                });
+            });
+            document.querySelectorAll('[data-modal-del]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const idx = parseInt(e.target.dataset.modalDel);
+                    groups.splice(idx, 1);
+                    updateGroupNumbersAndControlNums();
+                    renderModalContent();
+                });
+            });
+        }
+
+        saveProjectBtnBottom.addEventListener('click', () => {
+            if (groups.length === 0) {
+                alert('保存するデータがありません。');
+                return;
+            }
+
+            const saveData = {
+                threshold: thresholdSelect.value,
+                startSettings: startSettings,
+                groups: groups.map(g => ({
+                    type: g.type,
+                    isEmpty: g.isEmpty || false,
+                    selectedIndices: g.selectedIndices,
+                    photoNames: g.photos.map(p => ({ name: p.name, dateTime: p.dateTime.toISOString() }))
+                }))
+            };
+
+            const blob = new Blob([JSON.stringify(saveData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `猟友会_らくらく写真帳_作業データ_${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        loadProjectInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const savedData = JSON.parse(event.target.result);
+                    
+                    const hasPhotosInSave = savedData.groups.some(g => !g.isEmpty && g.photoNames && g.photoNames.length > 0);
+                    if (hasPhotosInSave && rawPhotos.length === 0) {
+                        alert('【重要】作業データを復元する前に、同じデジカメの写真ファイルを再度この画面にドラッグ＆ドロップして読み込ませてください。\n（※写真の画像実体と結びつけるためです）');
+                        loadProjectInput.value = '';
+                        return;
+                    }
+
+                    if (savedData.threshold) thresholdSelect.value = savedData.threshold;
+                    if (savedData.startSettings) startSettings = savedData.startSettings;
+
+                    groups = savedData.groups.map(savedG => {
+                        if (savedG.isEmpty) {
+                            return {
+                                photos: [],
+                                type: savedG.type,
+                                controlNumber: '',
+                                selectedIndices: [],
+                                isEmpty: true
+                            };
+                        }
+                        const matchedPhotos = savedG.photoNames.map(pn => {
+                            return rawPhotos.find(rp => rp.name === pn.name) || {
+                                file: null,
+                                url: '',
+                                dateTime: new Date(pn.dateTime),
+                                name: pn.name
+                            };
+                        });
+                        return {
+                            photos: matchedPhotos,
+                            type: savedG.type,
+                            controlNumber: '',
+                            selectedIndices: savedG.selectedIndices,
+                            isEmpty: false
+                        };
+                    });
+
+                    controls.classList.remove('hidden');
+                    bottomActionBar.classList.remove('hidden');
+                    renderStartSettings();
+                    updateGroupNumbersAndControlNums();
+                    renderGroups();
+                    alert('作業データを正常に読み込みました！');
+                } catch (err) {
+                    console.error(err);
+                    alert('保存ファイルの読み込みに失敗しました。正しいJSONファイルかご確認ください。');
+                }
+                loadProjectInput.value = '';
+            };
+            reader.readAsText(file);
+        });
+
+        async function handleFiles(files) {
+            rawPhotos = [];
+            const fileArray = Array.from(files).filter(f => f.type.startsWith('image/'));
+            
+            if (fileArray.length === 0) {
+                alert('有効な画像ファイルがありません。');
+                return;
+            }
+
+            dropZone.innerHTML = `<p class="text-lg font-medium text-emerald-600">Exif情報を解析中 (${fileArray.length}枚)...</p>`;
+
+            for (let file of fileArray) {
+                let dateTime = null;
+                try {
+                    const exifData = await exifr.parse(file, ['DateTimeOriginal', 'CreateDate']);
+                    if (exifData && (exifData.DateTimeOriginal || exifData.CreateDate)) {
+                        dateTime = new Date(exifData.DateTimeOriginal || exifData.CreateDate);
+                    }
+                } catch (err) {
+                    console.warn('Exif read error:', file.name);
+                }
+
+                if (!dateTime || isNaN(dateTime)) {
+                    dateTime = new Date(file.lastModified);
+                }
+
+                rawPhotos.push({
+                    file: file,
+                    url: URL.createObjectURL(file),
+                    dateTime: dateTime,
+                    name: file.name
+                });
+            }
+
+            rawPhotos.sort((a, b) => a.dateTime - b.dateTime);
+
+            dropZone.innerHTML = `
+                <svg class="w-12 h-12 mx-auto text-emerald-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                <p class="text-lg font-medium text-slate-700">${rawPhotos.length}枚の写真を読み込みました</p>
+                <p class="text-sm text-slate-400 mt-1">追加でドロップするか、下のグループを確認してください</p>
+            `;
+            controls.classList.remove('hidden');
+            bottomActionBar.classList.remove('hidden');
+            renderStartSettings();
+
+            buildGroups();
+        }
+
+        function buildGroups() {
+            const thresholdMinutes = parseInt(thresholdSelect.value);
+            const thresholdMs = thresholdMinutes * 60 * 1000;
+
+            groups = [];
+            let currentGroup = [];
+
+            rawPhotos.forEach((photo) => {
+                if (currentGroup.length === 0) {
+                    currentGroup.push(photo);
+                } else {
+                    const lastPhoto = currentGroup[currentGroup.length - 1];
+                    const diff = photo.dateTime - lastPhoto.dateTime;
+
+                    if (diff <= thresholdMs) {
+                        currentGroup.push(photo);
+                    } else {
+                        groups.push(createGroupObj(currentGroup));
+                        currentGroup = [photo];
+                    }
+                }
+            });
+            if (currentGroup.length > 0) {
+                groups.push(createGroupObj(currentGroup));
+            }
+
+            updateGroupNumbersAndControlNums();
+            renderGroups();
+        }
+
+        function createGroupObj(photos) {
+            const type = photos.length >= 3 ? 'deer' : 'raccoon';
+            const animalConfig = ANIMAL_TYPES.find(a => a.id === type);
+            const maxSelected = animalConfig.max;
+
+            return {
+                photos: photos,
+                type: type,
+                controlNumber: '',
+                selectedIndices: photos.map((_, i) => i < maxSelected),
+                isEmpty: false
+            };
+        }
+
+        function updateGroupNumbersAndControlNums() {
+            let counters = {};
+            let baseCtrls = {};
+            
+            for (let key in startSettings) {
+                counters[key] = startSettings[key].num;
+                baseCtrls[key] = startSettings[key].ctrl;
+            }
+
+            let typeCounters = { ...counters };
+            groups.forEach(group => {
+                group.serialNumber = typeCounters[group.type];
+                group.controlNumber = baseCtrls[group.type] ? baseCtrls[group.type] : '';
+                typeCounters[group.type]++;
+            });
+        }
+
+        // グループ内の選択枚数が上限を超えていたら自動で調整するヘルパー
+        function normalizeGroupSelections(group) {
+            if (group.isEmpty) return;
+            const animalConfig = ANIMAL_TYPES.find(a => a.id === group.type);
+            const max = animalConfig ? animalConfig.max : 2;
+            let count = 0;
+            group.selectedIndices = group.selectedIndices.map(sel => {
+                if (sel && count < max) {
+                    count++;
+                    return true;
+                }
+                return false;
+            });
+            // もし1枚も選択されていなければ先頭からmax枚まで選択する
+            if (count === 0 && group.photos.length > 0) {
+                group.selectedIndices = group.photos.map((_, i) => i < max);
+            }
+        }
+
+        // 写真1枚を上のグループへ移動
+        function movePhotoToPrevGroup(gIdx, pIdx) {
+            // 移動先となる直近の「写真ありグループ」を上に探す
+            let targetIdx = gIdx - 1;
+            while (targetIdx >= 0 && groups[targetIdx].isEmpty) {
+                targetIdx--;
+            }
+
+            const photo = groups[gIdx].photos.splice(pIdx, 1)[0];
+            groups[gIdx].selectedIndices.splice(pIdx, 1);
+
+            if (targetIdx >= 0) {
+                groups[targetIdx].photos.push(photo);
+                groups[targetIdx].selectedIndices.push(true);
+                normalizeGroupSelections(groups[targetIdx]);
+            } else {
+                // 上にグループがない場合は一番上に新規グループを作成
+                groups.unshift(createGroupObj([photo]));
+                gIdx++; // 元のグループのインデックスが1つずれる
+            }
+
+            // 元のグループの写真が0枚になったらグループ自体を削除
+            if (groups[gIdx].photos.length === 0) {
+                groups.splice(gIdx, 1);
+            } else {
+                normalizeGroupSelections(groups[gIdx]);
+            }
+
+            updateGroupNumbersAndControlNums();
+            renderGroups();
+        }
+
+        // 写真1枚を下のグループへ移動
+        function movePhotoToNextGroup(gIdx, pIdx) {
+            // 移動先となる直近の「写真ありグループ」を下に探す
+            let targetIdx = gIdx + 1;
+            while (targetIdx < groups.length && groups[targetIdx].isEmpty) {
+                targetIdx++;
+            }
+
+            const photo = groups[gIdx].photos.splice(pIdx, 1)[0];
+            groups[gIdx].selectedIndices.splice(pIdx, 1);
+
+            if (targetIdx < groups.length) {
+                groups[targetIdx].photos.unshift(photo);
+                groups[targetIdx].selectedIndices.unshift(true);
+                normalizeGroupSelections(groups[targetIdx]);
+            } else {
+                // 下にグループがない場合は一番下に新規グループを作成
+                groups.push(createGroupObj([photo]));
+            }
+
+            // 元のグループの写真が0枚になったらグループ自体を削除
+            if (groups[gIdx].photos.length === 0) {
+                groups.splice(gIdx, 1);
+            } else {
+                normalizeGroupSelections(groups[gIdx]);
+            }
+
+            updateGroupNumbersAndControlNums();
+            renderGroups();
+        }
+
+        // この写真以降を新しいグループとして分割
+        function splitGroupAtPhoto(gIdx, pIdx) {
+            if (pIdx <= 0) return;
+            const remainingPhotos = groups[gIdx].photos.splice(pIdx);
+            groups[gIdx].selectedIndices.splice(pIdx);
+            normalizeGroupSelections(groups[gIdx]);
+
+            const newGroup = createGroupObj(remainingPhotos);
+            newGroup.type = groups[gIdx].type; // 元の種類を引き継ぐ
+            normalizeGroupSelections(newGroup);
+
+            groups.splice(gIdx + 1, 0, newGroup);
+
+            updateGroupNumbersAndControlNums();
+            renderGroups();
+        }
+
+        function renderGroups() {
+            groupsContainer.innerHTML = '';
+
+            if (groups.length === 0) {
+                groupsContainer.innerHTML = '<p class="text-center text-slate-400">グループがありません</p>';
+                return;
+            }
+
+            groups.forEach((group, gIndex) => {
+                const animalConfig = ANIMAL_TYPES.find(a => a.id === group.type);
+                
+                const card = document.createElement('div');
+                card.className = group.isEmpty
+                    ? 'bg-amber-50/70 shadow rounded-xl p-6 border-2 border-amber-300'
+                    : 'bg-white shadow rounded-xl p-6 border border-slate-200';
+                
+                const moveControlsHtml = `
+                    <div class="flex items-center gap-1.5 ml-auto">
+                        <button type="button" data-move-up="${gIndex}" ${gIndex === 0 ? 'disabled' : ''} class="bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-slate-700 border px-2.5 py-1 rounded-lg text-xs font-bold transition">
+                            ↑ グループ上へ
+                        </button>
+                        <button type="button" data-move-down="${gIndex}" ${gIndex === groups.length - 1 ? 'disabled' : ''} class="bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-slate-700 border px-2.5 py-1 rounded-lg text-xs font-bold transition">
+                            ↓ グループ下へ
+                        </button>
+                    </div>
+                `;
+
+                let typeButtonsHtml = '';
+                ANIMAL_TYPES.forEach(a => {
+                    const isActive = group.type === a.id;
+                    const btnClass = isActive
+                        ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-400'
+                        : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300';
+                    typeButtonsHtml += `
+                        <button type="button" data-group-type-btn="${gIndex}" data-type="${a.id}" 
+                                class="py-2.5 px-2 rounded-xl text-base font-bold transition text-center ${btnClass}">
+                            ${a.name}
+                        </button>`;
+                });
+
+                if (group.isEmpty) {
+                    card.innerHTML = `
+                        <div class="flex flex-col gap-3">
+                            <div class="flex flex-wrap items-center gap-3">
+                                <span class="bg-amber-500 text-white font-bold px-4 py-1.5 rounded-lg text-lg">
+                                    ${animalConfig.name} No.${group.serialNumber}（写真なし）
+                                </span>
+                                <span class="text-sm font-bold text-amber-800 bg-amber-100 px-3 py-1 rounded-lg">
+                                    ※ 欠番・撮影写真なしとして連番に含めます
+                                </span>
+                                ${group.controlNumber ? `<span class="text-sm font-bold bg-white text-slate-700 px-3 py-1 rounded-lg border">駆除番号: ${group.controlNumber}</span>` : ''}
+                                ${moveControlsHtml}
+                            </div>
+                            <div class="w-full pt-1">
+                                <span class="block text-xs font-bold text-slate-500 mb-1.5">▼ 動物の種類を選択（クリックで切り替え）：</span>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 w-full">
+                                    ${typeButtonsHtml}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    const dateStr = group.photos[0].dateTime.toLocaleString('jp-JP');
+                    const selectedCount = group.selectedIndices.filter(Boolean).length;
+                    const maxAllowed = animalConfig.max;
+                    const isMaxReached = selectedCount >= maxAllowed;
+
+                    let photosHtml = '';
+                    group.photos.forEach((p, pIndex) => {
+                        const isChecked = group.selectedIndices[pIndex];
+                        const isDisabled = !isChecked && isMaxReached;
+                        
+                        let cardStyle = 'border-slate-200 bg-slate-50';
+                        if (isChecked) {
+                            cardStyle = 'border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-400';
+                        }
+                        if (isDisabled) {
+                            cardStyle = 'border-slate-200 bg-slate-100 opacity-75';
+                        } else {
+                            cardStyle += ' hover:border-emerald-400';
+                        }
+
+                        // 写真移動・分割用アクションバー
+                        const splitBtnHtml = pIndex > 0
+                            ? `<button type="button" data-split-photo="${gIndex}-${pIndex}" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-2 py-1 rounded text-xs font-bold transition" title="この写真とそれ以降を切り離して新しいグループにします">✂ ここから別個体へ分割</button>`
+                            : '';
+
+                        photosHtml += `
+                            <div class="border-2 rounded-xl p-3 flex flex-col justify-between transition ${cardStyle}">
+                                <div class="photo-click-area relative flex flex-col items-center cursor-pointer" data-group="${gIndex}" data-photo="${pIndex}" data-disabled="${isDisabled}">
+                                    <div class="absolute top-2 left-2 z-10 px-3 py-1.5 rounded-lg shadow text-sm font-bold flex items-center gap-2 ${isChecked ? 'bg-emerald-600 text-white' : 'bg-white/95 text-slate-700'}">
+                                        <span>${isChecked ? '✓ 採用中' : (isDisabled ? `上限(${maxAllowed}枚)済` : '未採用 (クリックで選択)')}</span>
+                                    </div>
+                                    <img src="${p.url}" class="w-full h-72 sm:h-80 object-contain bg-slate-200/50 rounded-lg mb-2 pointer-events-none">
+                                    <span class="text-sm text-slate-600 font-medium truncate w-full text-center" title="${p.name}">${p.name}</span>
+                                    <span class="text-xs text-slate-400 mt-0.5 mb-2">撮影時刻: ${p.dateTime.toLocaleTimeString()}</span>
+                                </div>
+                                
+                                <!-- 写真個別移動・分割ボタン -->
+                                <div class="pt-2 border-t border-slate-200/80 flex flex-wrap items-center justify-center gap-1.5">
+                                    <button type="button" data-photo-to-prev="${gIndex}-${pIndex}" class="bg-white hover:bg-sky-50 text-sky-700 border border-sky-300 px-2.5 py-1 rounded text-xs font-bold transition" title="この写真1枚を上のグループへ移動します">
+                                        ↑ 上のグループへ
+                                    </button>
+                                    <button type="button" data-photo-to-next="${gIndex}-${pIndex}" class="bg-white hover:bg-sky-50 text-sky-700 border border-sky-300 px-2.5 py-1 rounded text-xs font-bold transition" title="この写真1枚を下のグループへ移動します">
+                                        ↓ 下のグループへ
+                                    </button>
+                                    ${splitBtnHtml}
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    card.innerHTML = `
+                        <div class="flex flex-col gap-3 mb-5 pb-4 border-b border-slate-200">
+                            <div class="flex flex-wrap items-center gap-3">
+                                <span class="bg-emerald-100 text-emerald-800 font-bold px-4 py-1.5 rounded-lg text-lg">
+                                    ${animalConfig.name} No.${group.serialNumber}
+                                </span>
+                                <span class="text-sm font-bold px-3 py-1.5 rounded-lg bg-slate-200 text-slate-700">
+                                    選択中: ${selectedCount} / ${maxAllowed}枚
+                                </span>
+                                <span class="text-sm font-medium text-slate-600">撮影日時: ${dateStr}</span>
+                                ${group.controlNumber ? `<span class="text-sm font-bold bg-slate-100 text-slate-700 px-3 py-1 rounded-lg border">駆除番号: ${group.controlNumber}</span>` : ''}
+                                ${moveControlsHtml}
+                            </div>
+                            
+                            <div class="w-full pt-1">
+                                <span class="block text-xs font-bold text-slate-500 mb-1.5">▼ 動物の種類を選択（クリックで切り替え）：</span>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 w-full">
+                                    ${typeButtonsHtml}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            ${photosHtml}
+                        </div>
+                    `;
+                }
+                groupsContainer.appendChild(card);
+            });
+
+            // 写真クリックで採用・不採用切り替え
+            document.querySelectorAll('.photo-click-area').forEach(area => {
+                area.addEventListener('click', () => {
+                    const isDisabled = area.dataset.disabled === 'true';
+                    if (isDisabled) return;
+
+                    const gIdx = parseInt(area.dataset.group);
+                    const pIdx = parseInt(area.dataset.photo);
+                    const currentState = groups[gIdx].selectedIndices[pIdx];
+                    
+                    const animalConfig = ANIMAL_TYPES.find(a => a.id === groups[gIdx].type);
+                    const currentSelectedCount = groups[gIdx].selectedIndices.filter(Boolean).length;
+
+                    if (!currentState && currentSelectedCount >= animalConfig.max) {
+                        return;
+                    }
+
+                    groups[gIdx].selectedIndices[pIdx] = !currentState;
+                    renderGroups();
+                });
+            });
+
+            // 写真を上のグループへ移動
+            document.querySelectorAll('[data-photo-to-prev]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const [gIdx, pIdx] = e.target.dataset.photoToPrev.split('-').map(Number);
+                    movePhotoToPrevGroup(gIdx, pIdx);
+                });
+            });
+
+            // 写真を下のグループへ移動
+            document.querySelectorAll('[data-photo-to-next]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const [gIdx, pIdx] = e.target.dataset.photoToNext.split('-').map(Number);
+                    movePhotoToNextGroup(gIdx, pIdx);
+                });
+            });
+
+            // ここから別個体へ分割
+            document.querySelectorAll('[data-split-photo]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const [gIdx, pIdx] = e.target.dataset.splitPhoto.split('-').map(Number);
+                    splitGroupAtPhoto(gIdx, pIdx);
+                });
+            });
+
+            // 動物種類切り替え
+            document.querySelectorAll('[data-group-type-btn]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const gIdx = parseInt(e.target.dataset.groupTypeBtn);
+                    const newType = e.target.dataset.type;
+                    groups[gIdx].type = newType;
+                    if (!groups[gIdx].isEmpty) {
+                        const animalConfig = ANIMAL_TYPES.find(a => a.id === newType);
+                        const max = animalConfig.max;
+                        groups[gIdx].selectedIndices = groups[gIdx].photos.map((_, i) => i < max);
+                    }
+                    updateGroupNumbersAndControlNums();
+                    renderGroups();
+                });
+            });
+
+            // グループ全体の並び替え（上へ）
+            document.querySelectorAll('[data-move-up]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const gIdx = parseInt(e.target.dataset.moveUp);
+                    if (gIdx > 0) {
+                        const temp = groups[gIdx];
+                        groups[gIdx] = groups[gIdx - 1];
+                        groups[gIdx - 1] = temp;
+                        updateGroupNumbersAndControlNums();
+                        renderGroups();
+                    }
+                });
+            });
+
+            // グループ全体の並び替え（下へ）
+            document.querySelectorAll('[data-move-down]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const gIdx = parseInt(e.target.dataset.moveDown);
+                    if (gIdx < groups.length - 1) {
+                        const temp = groups[gIdx];
+                        groups[gIdx] = groups[gIdx + 1];
+                        groups[gIdx + 1] = temp;
+                        updateGroupNumbersAndControlNums();
+                        renderGroups();
+                    }
+                });
+            });
+        }
+    </script>
+
+    <!-- 印刷用スタイル -->
+    <style>
+        @media print {
+            body { background: white; padding: 0; }
+            header, #drop-zone, #controls, #groups-container, #bottom-action-bar, .bg-white.shadow.rounded-xl.p-4.mb-6.flex { display: none !important; }
+        }
+    </style>
+
+    <!-- 印刷用スクリプト -->
+    <script>
+        window.addEventListener('beforeprint', () => {
+            let oldPrintArea = document.getElementById('print-area');
+            if (oldPrintArea) oldPrintArea.remove();
+
+            const printArea = document.createElement('div');
+            printArea.id = 'print-area';
+            document.body.appendChild(printArea);
+
+            ANIMAL_TYPES.forEach(animal => {
+                const animalGroups = groups.filter(g => g.type === animal.id);
+                if (animalGroups.length === 0) return;
+
+                if (animal.id === 'deer') {
+                    animalGroups.forEach(group => {
+                        const pageDiv = document.createElement('div');
+                        pageDiv.className = 'print-page';
+                        
+                        const ctrlText = group.controlNumber ? `駆除番号: ${group.controlNumber}` : '';
+                        const seqText = `連番: No.${group.serialNumber}`;
+                        let headerHtml = `<div class="print-header">【 駆除写真帳：シカ 】 ${ctrlText} ／ ${seqText}</div>`;
+                        
+                        let imgsHtml = '<div class="print-deer-grid">';
+                        if (group.isEmpty) {
+                            imgsHtml += `<div class="print-empty-box">※ 撮影写真なし（欠番・記録のみ）</div>`;
+                        } else {
+                            group.photos.forEach((p, pIdx) => {
+                                if (group.selectedIndices[pIdx]) {
+                                    imgsHtml += `<div class="print-photo-box"><img src="${p.url}"></div>`;
+                                }
+                            });
+                        }
+                        imgsHtml += '</div>';
+
+                        pageDiv.innerHTML = headerHtml + imgsHtml;
+                        printArea.appendChild(pageDiv);
+                    });
+                } else {
+                    const chunkSize = 4;
+                    for (let i = 0; i < animalGroups.length; i += chunkSize) {
+                        const chunk = animalGroups.slice(i, i + chunkSize);
+                        
+                        const pageDiv = document.createElement('div');
+                        pageDiv.className = 'print-page';
+
+                        let headerHtml = `<div class="print-header">【 駆除写真帳：${animal.name} 一覧 】</div>`;
+                        let gridHtml = '<div class="print-other-grid">';
+
+                        chunk.forEach(group => {
+                            const subCtrl = group.controlNumber ? `駆除番号: ${group.controlNumber}` : '';
+                            const subSeq = `連番: No.${group.serialNumber}`;
+
+                            if (group.isEmpty) {
+                                for (let k = 0; k < 2; k++) {
+                                    gridHtml += `
+                                        <div class="print-other-photo-box">
+                                            <div class="print-sub-header">${subCtrl} ／ ${subSeq}</div>
+                                            <div class="print-other-empty">※ 撮影写真なし</div>
+                                        </div>
+                                    `;
+                                }
+                            } else {
+                                group.photos.forEach((p, pIdx) => {
+                                    if (group.selectedIndices[pIdx]) {
+                                        gridHtml += `
+                                            <div class="print-other-photo-box">
+                                                <div class="print-sub-header">${subCtrl} ／ ${subSeq}</div>
+                                                <img src="${p.url}">
+                                            </div>
+                                        `;
+                                    }
+                                });
+                            }
+                        });
+
+                        gridHtml += '</div>';
+                        pageDiv.innerHTML = headerHtml + gridHtml;
+                        printArea.appendChild(pageDiv);
+                    }
+                }
+            });
+        });
+    </script>
+
+    <style>
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 10mm;
+            }
+            body {
+                background: white !important;
+                color: black !important;
+            }
+            header, #drop-zone, #controls, #groups-container, #bottom-action-bar, .bg-white.shadow.rounded-xl.p-4.mb-6.flex {
+                display: none !important;
+            }
+            .print-page {
+                width: 190mm;
+                height: 277mm;
+                page-break-after: always;
+                break-after: page;
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-start;
+                box-sizing: border-box;
+                padding: 5mm;
+            }
+            .print-header {
+                font-size: 14pt;
+                font-weight: bold;
+                border-bottom: 2px solid black;
+                padding-bottom: 2mm;
+                margin-bottom: 5mm;
+            }
+            .print-deer-grid {
+                display: flex;
+                flex-direction: column;
+                gap: 5mm;
+            }
+            .print-photo-box {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                border: 1px solid #ccc;
+                padding: 3mm;
+                border-radius: 4px;
+            }
+            .print-photo-box img {
+                width: 100%;
+                height: 72mm;
+                object-fit: contain;
+                border-radius: 2px;
+            }
+            .print-empty-box {
+                border: 2px dashed #999;
+                height: 120mm;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                font-size: 16pt;
+                font-weight: bold;
+                color: #555;
+                border-radius: 6px;
+            }
+            .print-other-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                grid-template-rows: repeat(4, 1fr);
+                gap: 4mm;
+                height: 250mm;
+            }
+            .print-other-photo-box {
+                border: 1px solid #ccc;
+                padding: 2mm;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                background: #fff;
+                border-radius: 4px;
+            }
+            .print-sub-header {
+                font-size: 9pt;
+                font-weight: bold;
+                margin-bottom: 1mm;
+            }
+            .print-other-photo-box img {
+                width: 100%;
+                height: 50mm;
+                object-fit: contain;
+                border-radius: 2px;
+            }
+            .print-other-empty {
+                width: 100%;
+                height: 50mm;
+                border: 1px dashed #aaa;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                font-size: 10pt;
+                font-weight: bold;
+                color: #666;
+            }
+        }
+    </style>
+</body>
+</html>
