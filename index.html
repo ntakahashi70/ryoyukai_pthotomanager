@@ -9,7 +9,7 @@
     <!-- exifr CDN for EXIF parsing -->
     <script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.js"></script>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen p-6">
+<body class="bg-slate-100 text-slate-800 min-h-screen p-6 pb-24">
     <div class="max-w-5xl mx-auto">
         <!-- ヘッダー（右上にマニュアルボタン配置） -->
         <header class="bg-white shadow rounded-xl p-6 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -96,6 +96,20 @@
         </div>
     </div>
 
+    <!-- 右下固定フローティングアクションバー（途中保存・クイック操作用） -->
+    <div id="floating-action-bar" class="hidden fixed bottom-5 right-5 z-40 flex items-center gap-2 bg-white/95 backdrop-blur-sm p-2.5 rounded-2xl shadow-2xl border-2 border-slate-200">
+        <button id="open-empty-modal-btn-float" type="button" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-xl font-bold shadow transition flex items-center gap-1.5 text-sm">
+            <span>＋ 写真なしの整理</span>
+        </button>
+        <button id="save-project-btn-float" type="button" class="bg-sky-600 hover:bg-sky-700 text-white px-5 py-2.5 rounded-xl font-bold shadow transition flex items-center gap-2 text-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+            作業を保存
+        </button>
+        <button id="scroll-top-btn" type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-3 py-2.5 rounded-xl font-bold text-sm transition" title="画面の一番上へ戻る">
+            ↑ 上へ
+        </button>
+    </div>
+
     <!-- 写真なしの整理・追加専用モーダル画面 -->
     <div id="empty-manager-modal" class="hidden fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
@@ -177,16 +191,20 @@
         const fileInput = document.getElementById('file-input');
         const controls = document.getElementById('controls');
         const bottomActionBar = document.getElementById('bottom-action-bar');
+        const floatingActionBar = document.getElementById('floating-action-bar');
         const groupsContainer = document.getElementById('groups-container');
         const reGroupBtn = document.getElementById('re-group-btn');
         const printBtnBottom = document.getElementById('print-btn-bottom');
         const saveProjectBtnBottom = document.getElementById('save-project-btn-bottom');
+        const saveProjectBtnFloat = document.getElementById('save-project-btn-float');
+        const scrollTopBtn = document.getElementById('scroll-top-btn');
         const loadProjectInput = document.getElementById('load-project-input');
         const thresholdSelect = document.getElementById('time-threshold');
         const startSettingsContainer = document.getElementById('start-settings-container');
 
         const modal = document.getElementById('empty-manager-modal');
         const openEmptyModalBtn = document.getElementById('open-empty-modal-btn');
+        const openEmptyModalBtnFloat = document.getElementById('open-empty-modal-btn-float');
         const closeEmptyModalBtn = document.getElementById('close-empty-modal-btn');
         const modalFilterButtons = document.getElementById('modal-filter-buttons');
         const modalAddTopBtn = document.getElementById('modal-add-top-btn');
@@ -256,10 +274,18 @@
             window.print();
         });
 
-        openEmptyModalBtn.addEventListener('click', () => {
+        scrollTopBtn.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        function openEmptyManagerModal() {
             modal.classList.remove('hidden');
             renderModalContent();
-        });
+        }
+
+        openEmptyModalBtn.addEventListener('click', openEmptyManagerModal);
+        openEmptyModalBtnFloat.addEventListener('click', openEmptyManagerModal);
+
         closeEmptyModalBtn.addEventListener('click', () => {
             modal.classList.add('hidden');
             renderGroups();
@@ -418,7 +444,7 @@
             });
         }
 
-        saveProjectBtnBottom.addEventListener('click', () => {
+        function saveProject() {
             if (groups.length === 0) {
                 alert('保存するデータがありません。');
                 return;
@@ -442,7 +468,10 @@
             a.download = `猟友会_らくらく写真帳_作業データ_${new Date().toISOString().slice(0,10)}.json`;
             a.click();
             URL.revokeObjectURL(url);
-        });
+        }
+
+        saveProjectBtnBottom.addEventListener('click', saveProject);
+        saveProjectBtnFloat.addEventListener('click', saveProject);
 
         loadProjectInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
@@ -492,6 +521,7 @@
 
                     controls.classList.remove('hidden');
                     bottomActionBar.classList.remove('hidden');
+                    floatingActionBar.classList.remove('hidden');
                     renderStartSettings();
                     updateGroupNumbersAndControlNums();
                     renderGroups();
@@ -548,6 +578,7 @@
             `;
             controls.classList.remove('hidden');
             bottomActionBar.classList.remove('hidden');
+            floatingActionBar.classList.remove('hidden');
             renderStartSettings();
 
             buildGroups();
@@ -635,7 +666,6 @@
 
         // 写真1枚を上のグループへ移動
         function movePhotoToPrevGroup(gIdx, pIdx) {
-            // 移動先となる直近の「写真ありグループ」を上に探す
             let targetIdx = gIdx - 1;
             while (targetIdx >= 0 && groups[targetIdx].isEmpty) {
                 targetIdx--;
@@ -649,12 +679,10 @@
                 groups[targetIdx].selectedIndices.push(true);
                 normalizeGroupSelections(groups[targetIdx]);
             } else {
-                // 上にグループがない場合は一番上に新規グループを作成
                 groups.unshift(createGroupObj([photo]));
-                gIdx++; // 元のグループのインデックスが1つずれる
+                gIdx++;
             }
 
-            // 元のグループの写真が0枚になったらグループ自体を削除
             if (groups[gIdx].photos.length === 0) {
                 groups.splice(gIdx, 1);
             } else {
@@ -667,7 +695,6 @@
 
         // 写真1枚を下のグループへ移動
         function movePhotoToNextGroup(gIdx, pIdx) {
-            // 移動先となる直近の「写真ありグループ」を下に探す
             let targetIdx = gIdx + 1;
             while (targetIdx < groups.length && groups[targetIdx].isEmpty) {
                 targetIdx++;
@@ -681,11 +708,9 @@
                 groups[targetIdx].selectedIndices.unshift(true);
                 normalizeGroupSelections(groups[targetIdx]);
             } else {
-                // 下にグループがない場合は一番下に新規グループを作成
                 groups.push(createGroupObj([photo]));
             }
 
-            // 元のグループの写真が0枚になったらグループ自体を削除
             if (groups[gIdx].photos.length === 0) {
                 groups.splice(gIdx, 1);
             } else {
@@ -704,7 +729,7 @@
             normalizeGroupSelections(groups[gIdx]);
 
             const newGroup = createGroupObj(remainingPhotos);
-            newGroup.type = groups[gIdx].type; // 元の種類を引き継ぐ
+            newGroup.type = groups[gIdx].type;
             normalizeGroupSelections(newGroup);
 
             groups.splice(gIdx + 1, 0, newGroup);
@@ -795,7 +820,6 @@
                             cardStyle += ' hover:border-emerald-400';
                         }
 
-                        // 写真移動・分割用アクションバー
                         const splitBtnHtml = pIndex > 0
                             ? `<button type="button" data-split-photo="${gIndex}-${pIndex}" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-2 py-1 rounded text-xs font-bold transition" title="この写真とそれ以降を切り離して新しいグループにします">✂ ここから別個体へ分割</button>`
                             : '';
@@ -953,7 +977,7 @@
     <style>
         @media print {
             body { background: white; padding: 0; }
-            header, #drop-zone, #controls, #groups-container, #bottom-action-bar, .bg-white.shadow.rounded-xl.p-4.mb-6.flex { display: none !important; }
+            header, #drop-zone, #controls, #groups-container, #bottom-action-bar, #floating-action-bar, .bg-white.shadow.rounded-xl.p-4.mb-6.flex { display: none !important; }
         }
     </style>
 
@@ -1052,7 +1076,7 @@
                 background: white !important;
                 color: black !important;
             }
-            header, #drop-zone, #controls, #groups-container, #bottom-action-bar, .bg-white.shadow.rounded-xl.p-4.mb-6.flex {
+            header, #drop-zone, #controls, #groups-container, #bottom-action-bar, #floating-action-bar, .bg-white.shadow.rounded-xl.p-4.mb-6.flex {
                 display: none !important;
             }
             .print-page {
@@ -1146,3 +1170,4 @@
     </style>
 </body>
 </html>
+
