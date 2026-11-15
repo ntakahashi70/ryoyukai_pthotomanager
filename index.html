@@ -45,30 +45,28 @@
         </div>
 
         <!-- コントロールバー -->
-        <div id="controls" class="hidden bg-white shadow rounded-xl p-4 mb-6 space-y-4">
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <div class="flex flex-wrap items-center gap-4">
+        <div id="controls" class="hidden bg-white shadow rounded-xl p-5 mb-6 space-y-4">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center gap-3">
                     <div>
-                        <label class="text-sm font-bold text-slate-600 mr-2">グループ判定間隔:</label>
-                        <select id="time-threshold" class="border rounded px-3 py-1.5 text-sm bg-slate-50">
+                        <label class="text-sm font-bold text-slate-700 mr-2">グループ判定間隔:</label>
+                        <select id="time-threshold" class="border-2 border-slate-300 rounded-lg px-3 py-2 text-base bg-slate-50 font-medium">
                             <option value="5">5分以内</option>
                             <option value="15" selected>15分以内</option>
                             <option value="30">30分以内</option>
                             <option value="60">60分以内</option>
                         </select>
                     </div>
-                    <button id="re-group-btn" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-1.5 rounded text-sm font-medium transition">再グループ化</button>
+                    <button id="re-group-btn" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg text-base font-bold transition">再グループ化</button>
                 </div>
-                <p class="text-xs text-slate-500">※Exif日時がない写真や誤ってまとまった写真は、各写真下の「上のグループへ」「下のグループへ」「別個体へ分割」で手動整理できます。</p>
+                
+                <!-- 種類・番号設定ポップアップを開くボタン（大きく目立つように調整） -->
+                <button id="open-settings-modal-btn" type="button" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-xl text-base font-bold shadow-md transition flex items-center justify-center gap-2 w-full md:w-auto">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <span> 駆除番号・開始番号の設定を変更する</span>
+                </button>
             </div>
-
-            <!-- 種類ごとの初期値設定パネル -->
-            <div class="border-t pt-3">
-                <p class="text-xs font-bold text-slate-500 mb-2">【種類ごとの初期値設定（前回の続きから始める場合に変更してください）】</p>
-                <div id="start-settings-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    <!-- JSで動的生成 -->
-                </div>
-            </div>
+            <p class="text-xs text-slate-500">※Exif日時がない写真や誤ってまとまった写真は、各写真下のボタンや「写真なしの整理」で手動整理できます。</p>
         </div>
 
         <!-- グループ一覧コンテナ -->
@@ -97,17 +95,40 @@
     </div>
 
     <!-- 右下固定フローティングアクションバー（途中保存・クイック操作用） -->
-    <div id="floating-action-bar" class="hidden fixed bottom-5 right-5 z-40 flex items-center gap-2 bg-white/95 backdrop-blur-sm p-2.5 rounded-2xl shadow-2xl border-2 border-slate-200">
-        <button id="open-empty-modal-btn-float" type="button" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-xl font-bold shadow transition flex items-center gap-1.5 text-sm">
-            <span>＋ 写真なしの整理</span>
+    <div id="floating-action-bar" class="hidden fixed bottom-5 right-5 z-40 flex items-center gap-2 bg-white/95 backdrop-blur-sm p-3 rounded-2xl shadow-2xl border-2 border-slate-200">
+        <button id="open-empty-modal-btn-float" type="button" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-3 rounded-xl font-bold shadow transition flex items-center gap-1.5 text-sm">
+            <span>＋ 写真なし整理</span>
         </button>
-        <button id="save-project-btn-float" type="button" class="bg-sky-600 hover:bg-sky-700 text-white px-5 py-2.5 rounded-xl font-bold shadow transition flex items-center gap-2 text-sm">
+        <button id="save-project-btn-float" type="button" class="bg-sky-600 hover:bg-sky-700 text-white px-5 py-3 rounded-xl font-bold shadow transition flex items-center gap-2 text-sm">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
             作業を保存
         </button>
-        <button id="scroll-top-btn" type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-3 py-2.5 rounded-xl font-bold text-sm transition" title="画面の一番上へ戻る">
+        <button id="scroll-top-btn" type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-3.5 py-3 rounded-xl font-bold text-sm transition" title="画面の一番上へ戻る">
             ↑ 上へ
         </button>
+    </div>
+
+    <!-- 駆除番号・開始番号の設定用モーダル画面 -->
+    <div id="settings-modal" class="hidden fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-slate-800 text-white p-5 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-bold">駆除番号・開始番号の設定</h2>
+                    <p class="text-xs text-slate-300 mt-0.5">動物ごとの共通駆除番号のベースや、連番の開始番号を設定できます。</p>
+                </div>
+                <button id="close-settings-modal-btn" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition">閉じる</button>
+            </div>
+            <div class="p-6 flex-1 overflow-y-auto">
+                <div id="start-settings-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- JSで動적生成 -->
+                </div>
+            </div>
+            <div class="p-4 bg-slate-50 border-t text-right">
+                <button id="apply-settings-modal-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-xl font-bold shadow-md transition text-base">
+                    設定を反映して閉じる
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- 写真なしの整理・追加専用モーダル画面 -->
@@ -126,7 +147,7 @@
             <div class="p-4 bg-slate-100 border-b">
                 <span class="block text-xs font-bold text-slate-500 mb-2">▼ 表示・編集する動物の種類を選択：</span>
                 <div id="modal-filter-buttons" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
-                    <!-- JSで動的生成 -->
+                    <!-- JSで動적生成 -->
                 </div>
             </div>
 
@@ -146,7 +167,7 @@
 
                 <h4 class="text-sm font-bold text-slate-700">現在の登録一覧（写真プレビュー確認 ＆ 位置調整）：</h4>
                 <div id="modal-animal-list" class="space-y-3">
-                    <!-- JSで動的生成 -->
+                    <!-- JSで動적生成 -->
                 </div>
             </div>
         </div>
@@ -202,6 +223,11 @@
         const thresholdSelect = document.getElementById('time-threshold');
         const startSettingsContainer = document.getElementById('start-settings-container');
 
+        const settingsModal = document.getElementById('settings-modal');
+        const openSettingsModalBtn = document.getElementById('open-settings-modal-btn');
+        const closeSettingsModalBtn = document.getElementById('close-settings-modal-btn');
+        const applySettingsModalBtn = document.getElementById('apply-settings-modal-btn');
+
         const modal = document.getElementById('empty-manager-modal');
         const openEmptyModalBtn = document.getElementById('open-empty-modal-btn');
         const openEmptyModalBtnFloat = document.getElementById('open-empty-modal-btn-float');
@@ -220,16 +246,16 @@
             ANIMAL_TYPES.forEach(animal => {
                 const setting = startSettings[animal.id];
                 const div = document.createElement('div');
-                div.className = 'bg-slate-50 p-3 rounded-lg border border-slate-200 flex flex-col gap-2';
+                div.className = 'bg-slate-50 p-4 rounded-xl border-2 border-slate-200 flex flex-col gap-2.5';
                 div.innerHTML = `
-                    <span class="text-sm font-bold text-slate-700 text-center border-b pb-1 bg-slate-100 rounded">${animal.name}</span>
+                    <span class="text-base font-bold text-slate-800 text-center border-b pb-1.5 bg-slate-200/70 rounded">${animal.name}</span>
                     <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-0.5">駆除番号(共通ベース)</label>
-                        <input type="text" value="${setting.ctrl}" data-setting-type="${animal.id}" data-setting-field="ctrl" placeholder="例: 05-" class="start-setting-input w-full text-center border-2 rounded-md py-1.5 text-sm bg-white font-medium focus:border-emerald-500 focus:outline-none">
+                        <label class="block text-xs font-bold text-slate-700 mb-1">駆除番号(共通ベース)</label>
+                        <input type="text" value="${setting.ctrl}" data-setting-type="${animal.id}" data-setting-field="ctrl" placeholder="例: 05-" class="start-setting-input w-full text-center border-2 border-slate-300 rounded-lg py-2.5 text-base bg-white font-bold focus:border-emerald-500 focus:outline-none">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-0.5">開始番号</label>
-                        <input type="number" min="1" value="${setting.num}" data-setting-type="${animal.id}" data-setting-field="num" class="start-setting-input w-full text-center border-2 rounded-md py-1.5 text-sm font-bold bg-white focus:border-emerald-500 focus:outline-none">
+                        <label class="block text-xs font-bold text-slate-700 mb-1">開始番号</label>
+                        <input type="number" min="1" value="${setting.num}" data-setting-type="${animal.id}" data-setting-field="num" class="start-setting-input w-full text-center border-2 border-slate-300 rounded-lg py-2.5 text-base font-bold bg-white focus:border-emerald-500 focus:outline-none">
                     </div>
                 `;
                 startSettingsContainer.appendChild(div);
@@ -249,6 +275,18 @@
                 });
             });
         }
+
+        openSettingsModalBtn.addEventListener('click', () => {
+            renderStartSettings();
+            settingsModal.classList.remove('hidden');
+        });
+        closeSettingsModalBtn.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+        });
+        applySettingsModalBtn.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+            renderGroups();
+        });
 
         dropZone.addEventListener('click', () => fileInput.click());
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-emerald-500', 'bg-emerald-50/50'); });
@@ -321,7 +359,7 @@
                     ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-400'
                     : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300';
                 modalFilterButtons.innerHTML += `
-                    <button type="button" data-modal-filter="${a.id}" class="py-2 px-2 rounded-xl text-sm font-bold transition text-center ${btnClass}">
+                    <button type="button" data-modal-filter="${a.id}" class="py-2.5 px-2 rounded-xl text-sm font-bold transition text-center ${btnClass}">
                         ${a.name}
                     </button>
                 `;
@@ -645,7 +683,6 @@
             });
         }
 
-        // グループ内の選択枚数が上限を超えていたら自動で調整するヘルパー
         function normalizeGroupSelections(group) {
             if (group.isEmpty) return;
             const animalConfig = ANIMAL_TYPES.find(a => a.id === group.type);
@@ -658,13 +695,11 @@
                 }
                 return false;
             });
-            // もし1枚も選択されていなければ先頭からmax枚まで選択する
             if (count === 0 && group.photos.length > 0) {
                 group.selectedIndices = group.photos.map((_, i) => i < max);
             }
         }
 
-        // 写真1枚を上のグループへ移動
         function movePhotoToPrevGroup(gIdx, pIdx) {
             let targetIdx = gIdx - 1;
             while (targetIdx >= 0 && groups[targetIdx].isEmpty) {
@@ -693,7 +728,6 @@
             renderGroups();
         }
 
-        // 写真1枚を下のグループへ移動
         function movePhotoToNextGroup(gIdx, pIdx) {
             let targetIdx = gIdx + 1;
             while (targetIdx < groups.length && groups[targetIdx].isEmpty) {
@@ -721,7 +755,6 @@
             renderGroups();
         }
 
-        // この写真以降を新しいグループとして分割
         function splitGroupAtPhoto(gIdx, pIdx) {
             if (pIdx <= 0) return;
             const remainingPhotos = groups[gIdx].photos.splice(pIdx);
@@ -821,7 +854,7 @@
                         }
 
                         const splitBtnHtml = pIndex > 0
-                            ? `<button type="button" data-split-photo="${gIndex}-${pIndex}" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-2 py-1 rounded text-xs font-bold transition" title="この写真とそれ以降を切り離して新しいグループにします">✂ ここから別個体へ分割</button>`
+                            ? `<button type="button" data-split-photo="${gIndex}-${pIndex}" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-2.5 py-1 rounded text-xs font-bold transition" title="この写真とそれ以降を切り離して新しいグループにします">✂ ここから別個体へ分割</button>`
                             : '';
 
                         photosHtml += `
@@ -878,7 +911,6 @@
                 groupsContainer.appendChild(card);
             });
 
-            // 写真クリックで採用・不採用切り替え
             document.querySelectorAll('.photo-click-area').forEach(area => {
                 area.addEventListener('click', () => {
                     const isDisabled = area.dataset.disabled === 'true';
@@ -900,7 +932,6 @@
                 });
             });
 
-            // 写真を上のグループへ移動
             document.querySelectorAll('[data-photo-to-prev]').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -909,7 +940,6 @@
                 });
             });
 
-            // 写真を下のグループへ移動
             document.querySelectorAll('[data-photo-to-next]').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -918,7 +948,6 @@
                 });
             });
 
-            // ここから別個体へ分割
             document.querySelectorAll('[data-split-photo]').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -927,7 +956,6 @@
                 });
             });
 
-            // 動物種類切り替え
             document.querySelectorAll('[data-group-type-btn]').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const gIdx = parseInt(e.target.dataset.groupTypeBtn);
@@ -943,7 +971,6 @@
                 });
             });
 
-            // グループ全体の並び替え（上へ）
             document.querySelectorAll('[data-move-up]').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const gIdx = parseInt(e.target.dataset.moveUp);
@@ -957,7 +984,6 @@
                 });
             });
 
-            // グループ全体の並び替え（下へ）
             document.querySelectorAll('[data-move-down]').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const gIdx = parseInt(e.target.dataset.moveDown);
@@ -1170,4 +1196,3 @@
     </style>
 </body>
 </html>
-
