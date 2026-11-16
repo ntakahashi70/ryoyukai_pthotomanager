@@ -58,17 +58,18 @@
             </div>
 
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
-                <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-                    <div>
-                        <label class="text-xs sm:text-sm font-bold text-slate-700 mr-1.5">グループ判定間隔:</label>
-                        <select id="time-threshold" class="border-2 border-slate-300 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 text-sm sm:text-base bg-slate-50 font-medium">
+                <!-- グループ判定間隔と再グループ化ボタンをスマホでも同じ行に収まるよう調整 -->
+                <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                    <div class="flex-1 sm:flex-initial">
+                        <label class="block sm:inline text-xs sm:text-sm font-bold text-slate-700 mb-1 sm:mb-0 sm:mr-1.5">グループ判定間隔:</label>
+                        <select id="time-threshold" class="w-full sm:w-auto border-2 border-slate-300 rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-base bg-slate-50 font-medium">
                             <option value="5">5分以内</option>
                             <option value="15" selected>15分以内</option>
                             <option value="30">30分以内</option>
                             <option value="60">60分以内</option>
                         </select>
                     </div>
-                    <button id="re-group-btn" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm sm:text-base font-bold transition">再グループ化</button>
+                    <button id="re-group-btn" class="shrink-0 bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-base font-bold transition self-end sm:self-auto">再グループ化</button>
                 </div>
                 
                 <!-- 種類・番号設定ポップアップを開くボタン -->
@@ -289,14 +290,12 @@
                 modeStepBtn.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 bg-emerald-600 text-white shadow';
                 modeListBtn.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 text-slate-600 hover:bg-white/60';
                 filterBarWrapper.classList.add('hidden');
-                // 1件ずつ仕分けモードの時は下部・右下のバーを非表示
                 bottomActionBar.classList.add('hidden');
                 floatingActionBar.classList.add('hidden');
             } else {
                 modeListBtn.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 bg-emerald-600 text-white shadow';
                 modeStepBtn.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 text-slate-600 hover:bg-white/60';
                 filterBarWrapper.classList.remove('hidden');
-                // 一覧表示モードの時はデータを読み込み済みであれば表示
                 if (groups.length > 0) {
                     bottomActionBar.classList.remove('hidden');
                     floatingActionBar.classList.remove('hidden');
@@ -766,70 +765,6 @@
             });
         }
 
-        function movePhotoToPrevGroup(gIdx, pIdx) {
-            let targetIdx = gIdx - 1;
-            while (targetIdx >= 0 && groups[targetIdx].isEmpty) {
-                targetIdx--;
-            }
-
-            const photo = groups[gIdx].photos.splice(pIdx, 1)[0];
-            groups[gIdx].selectedIndices.splice(pIdx, 1);
-
-            if (targetIdx >= 0) {
-                groups[targetIdx].photos.push(photo);
-                groups[targetIdx].selectedIndices.push(true);
-                normalizeGroupSelections(groups[targetIdx]);
-            } else {
-                groups.unshift(createGroupObj([photo]));
-                groups[0].selectedIndices[0] = true;
-                gIdx++;
-            }
-
-            if (groups[gIdx].photos.length === 0) {
-                groups.splice(gIdx, 1);
-            } else {
-                normalizeGroupSelections(groups[gIdx]);
-            }
-
-            if (currentStepIndex >= groups.length) {
-                currentStepIndex = Math.max(0, groups.length - 1);
-            }
-            updateGroupNumbersAndControlNums();
-            renderCurrentView();
-        }
-
-        function movePhotoToNextGroup(gIdx, pIdx) {
-            let targetIdx = gIdx + 1;
-            while (targetIdx < groups.length && groups[targetIdx].isEmpty) {
-                targetIdx++;
-            }
-
-            const photo = groups[gIdx].photos.splice(pIdx, 1)[0];
-            groups[gIdx].selectedIndices.splice(pIdx, 1);
-
-            if (targetIdx < groups.length) {
-                groups[targetIdx].photos.unshift(photo);
-                groups[targetIdx].selectedIndices.unshift(true);
-                normalizeGroupSelections(groups[targetIdx]);
-            } else {
-                const newG = createGroupObj([photo]);
-                newG.selectedIndices[0] = true;
-                groups.push(newG);
-            }
-
-            if (groups[gIdx].photos.length === 0) {
-                groups.splice(gIdx, 1);
-            } else {
-                normalizeGroupSelections(groups[gIdx]);
-            }
-
-            if (currentStepIndex >= groups.length) {
-                currentStepIndex = Math.max(0, groups.length - 1);
-            }
-            updateGroupNumbersAndControlNums();
-            renderCurrentView();
-        }
-
         function splitGroupAtPhoto(gIdx, pIdx) {
             if (pIdx <= 0) return;
             const remainingPhotos = groups[gIdx].photos.splice(pIdx);
@@ -868,10 +803,10 @@
             const classifiedCount = groups.length - unclassifiedCount;
             const progressPercent = Math.round((classifiedCount / groups.length) * 100);
 
-            // 最後のグループを分類し終えた時の完了画面
+            // 最後のグループを分類し終えた時の完了画面（画面スクロールを強制せずその場で綺麗に収まる設計）
             if (isStepCompleted) {
                 stepViewContainer.innerHTML = `
-                    <div class="bg-white shadow-lg border-2 border-emerald-500 rounded-2xl p-6 sm:p-8 text-center space-y-6">
+                    <div id="step-counter-anchor" class="bg-white shadow-lg border-2 border-emerald-500 rounded-2xl p-6 sm:p-8 text-center space-y-6">
                         <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
                             <svg class="w-9 h-9" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
                         </div>
@@ -883,7 +818,6 @@
                             </p>
                         </div>
                         
-                        <!-- 完了画面にも各種アクションボタン（写真なし整理、作業保存、印刷、一覧確認）を配置 -->
                         <div class="bg-slate-50 p-4 sm:p-5 rounded-xl border border-slate-200 flex flex-col gap-3">
                             <span class="text-xs font-bold text-slate-600">▼ 写真の選択・確認が終わったらこちらから行えます：</span>
                             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
@@ -927,7 +861,6 @@
             const group = groups[gIndex];
             const animalConfig = ANIMAL_TYPES.find(a => a.id === group.type);
 
-            // 進捗＆ナビゲーションバー（ここが「件数表示の位置」）
             const navHtml = `
                 <div id="step-counter-anchor" class="bg-white shadow rounded-xl p-3.5 sm:p-4 border border-slate-200 space-y-2.5">
                     <div class="flex items-center justify-between gap-2">
@@ -1024,14 +957,6 @@
                                     <span class="shrink-0 ml-2">${p.dateTime.toLocaleTimeString()}</span>
                                 </div>
                             </div>
-                            <div class="pt-3 mt-2 border-t border-slate-200/80 flex items-center justify-center gap-2">
-                                <button type="button" data-photo-to-prev="${gIndex}-${pIndex}" class="flex-1 bg-white hover:bg-sky-50 text-sky-700 border border-sky-300 py-2 px-2 rounded-lg text-xs sm:text-sm font-bold transition shadow-sm">
-                                    ↑ 前の個体へ
-                                </button>
-                                <button type="button" data-photo-to-next="${gIndex}-${pIndex}" class="flex-1 bg-white hover:bg-sky-50 text-sky-700 border border-sky-300 py-2 px-2 rounded-lg text-xs sm:text-sm font-bold transition shadow-sm">
-                                    ↓ 次の個体へ
-                                </button>
-                            </div>
                         </div>
                     `;
                 });
@@ -1076,8 +1001,13 @@
             document.getElementById('step-next-btn').addEventListener('click', () => {
                 if (currentStepIndex < groups.length - 1) {
                     currentStepIndex++;
+                    const anchor = document.getElementById('step-counter-anchor');
+                    if (anchor) anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 } else {
                     isStepCompleted = true;
+                    // 仕分け終了時は画面を強制せず、その場（カウンター位置あたり）を自然に維持
+                    const anchor = document.getElementById('step-counter-anchor');
+                    if (anchor) anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
                 renderStepView();
             });
@@ -1093,6 +1023,8 @@
                         if (firstIdx !== -1) currentStepIndex = firstIdx;
                     }
                     renderStepView();
+                    const anchor = document.getElementById('step-counter-anchor');
+                    if (anchor) anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 });
             }
 
@@ -1114,12 +1046,9 @@
                     }
                     renderStepView();
 
-                    // 動物の種類をタップ時、件数表示の位置（#step-counter-anchor）まで画面をスムーズに移動
                     const anchor = document.getElementById('step-counter-anchor');
                     if (anchor) {
                         anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    } else {
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
                     }
                 });
             });
@@ -1146,22 +1075,6 @@
 
                     groups[gIdx].selectedIndices[pIdx] = !currentState;
                     renderCurrentView();
-                });
-            });
-
-            container.querySelectorAll('[data-photo-to-prev]').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const [gIdx, pIdx] = e.currentTarget.dataset.photoToPrev.split('-').map(Number);
-                    movePhotoToPrevGroup(gIdx, pIdx);
-                });
-            });
-
-            container.querySelectorAll('[data-photo-to-next]').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const [gIdx, pIdx] = e.currentTarget.dataset.photoToNext.split('-').map(Number);
-                    movePhotoToNextGroup(gIdx, pIdx);
                 });
             });
 
@@ -1497,7 +1410,6 @@
                             `;
                         });
 
-                        gridHtml += '`';
                         gridHtml += '</div>';
                         pageDiv.innerHTML = headerHtml + gridHtml;
                         printArea.appendChild(pageDiv);
@@ -1626,7 +1538,7 @@
             .print-page:last-of-type {
                 page-break-after: auto !important;
                 break-after: auto !important;
-            }å
+            }
         }
     </style>
 </body>
