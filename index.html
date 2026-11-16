@@ -103,7 +103,7 @@
         </div>
     </div>
 
-    <!-- 右下固定フローティングアクションバー（スリム化して改行を防ぐ調整） -->
+    <!-- 右下固定フローティングアクションバー（印刷ボタンを追加） -->
     <div id="floating-action-bar" class="hidden fixed bottom-4 right-4 z-40 flex items-center gap-1.5 bg-white/95 backdrop-blur-sm p-2 rounded-xl shadow-2xl border-2 border-slate-200">
         <button id="open-empty-modal-btn-float" type="button" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-lg font-bold shadow transition flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap">
             <span>＋ 写真なし整理</span>
@@ -111,6 +111,10 @@
         <button id="save-project-btn-float" type="button" class="bg-sky-600 hover:bg-sky-700 text-white px-3 py-2 rounded-lg font-bold shadow transition flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
             <span>保存</span>
+        </button>
+        <button id="print-btn-float" type="button" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg font-bold shadow transition flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+            <span>印刷</span>
         </button>
         <button id="scroll-top-btn" type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-2.5 py-2 rounded-lg font-bold text-xs sm:text-sm transition whitespace-nowrap" title="画面の一番上へ戻る">
             ↑上へ
@@ -152,7 +156,7 @@
                 <button id="close-empty-modal-btn" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition">閉じる</button>
             </div>
 
-            <!-- モーダル内：動物種類フィルターボタン（4列に変更） -->
+            <!-- モーダル内：動物種類フィルターボタン -->
             <div class="p-4 bg-slate-100 border-b">
                 <span class="block text-xs font-bold text-slate-500 mb-2">▼ 表示・編集する動物の種類を選択：</span>
                 <div id="modal-filter-buttons" class="grid grid-cols-4 gap-2">
@@ -202,7 +206,7 @@
         let rawPhotos = [];
         let groups = [];
         let activeModalFilterType = 'deer';
-        let currentDisplayFilter = 'all'; // 写真選択画面のフィルター初期値「すべて」
+        let currentDisplayFilter = 'all';
         
         let startSettings = {
             unclassified: { num: 1, ctrl: '' },
@@ -223,6 +227,7 @@
         const groupsContainer = document.getElementById('groups-container');
         const reGroupBtn = document.getElementById('re-group-btn');
         const printBtnBottom = document.getElementById('print-btn-bottom');
+        const printBtnFloat = document.getElementById('print-btn-float'); // 追加
         const saveProjectBtnBottom = document.getElementById('save-project-btn-bottom');
         const saveProjectBtnFloat = document.getElementById('save-project-btn-float');
         const scrollTopBtn = document.getElementById('scroll-top-btn');
@@ -250,7 +255,6 @@
 
         function renderStartSettings() {
             startSettingsContainer.innerHTML = '';
-            // 「未分類」を除外して描画
             ANIMAL_TYPES.filter(animal => animal.id !== 'unclassified').forEach(animal => {
                 const setting = startSettings[animal.id];
                 const div = document.createElement('div');
@@ -316,9 +320,10 @@
             if (rawPhotos.length > 0) buildGroups();
         });
 
-        printBtnBottom.addEventListener('click', () => {
-            window.print();
-        });
+        // 印刷ボタンのイベントリスナー（下部・右下共通）
+        const triggerPrint = () => window.print();
+        printBtnBottom.addEventListener('click', triggerPrint);
+        printBtnFloat.addEventListener('click', triggerPrint);
 
         scrollTopBtn.addEventListener('click', () => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -649,7 +654,6 @@
         }
 
         function createGroupObj(photos) {
-            // 初期値は「未分類 (unclassified)」にする
             const type = 'unclassified';
             const animalConfig = ANIMAL_TYPES.find(a => a.id === type);
             const maxSelected = animalConfig.max;
@@ -771,7 +775,6 @@
         function renderDisplayFilterButtons() {
             displayFilterButtons.innerHTML = '';
             
-            // 「すべて」ボタン
             const allActive = currentDisplayFilter === 'all';
             const allClass = allActive ? 'bg-slate-700 text-white shadow-md' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300';
             displayFilterButtons.innerHTML += `
@@ -780,7 +783,6 @@
                 </button>
             `;
 
-            // 各動物種 ＋ 未分類 ボタン
             ANIMAL_TYPES.forEach(a => {
                 const isActive = currentDisplayFilter === a.id;
                 const btnClass = isActive
@@ -806,7 +808,6 @@
             renderDisplayFilterButtons();
             groupsContainer.innerHTML = '';
 
-            // フィルター適用
             const filteredGroups = groups.map((g, idx) => ({ group: g, index: idx })).filter(item => {
                 if (currentDisplayFilter === 'all') return true;
                 return item.group.type === currentDisplayFilter;
@@ -1038,7 +1039,7 @@
         }
     </script>
 
-    <!-- 印刷用スクリプト（「未分類」は出力から除外） -->
+    <!-- 印刷用スクリプト -->
     <script>
         window.addEventListener('beforeprint', () => {
             let oldPrintArea = document.getElementById('print-area');
@@ -1049,7 +1050,6 @@
             document.body.appendChild(printArea);
 
             ANIMAL_TYPES.forEach(animal => {
-                // 「未分類」は印刷対象外とする
                 if (animal.id === 'unclassified') return;
 
                 const animalGroups = groups.filter(g => g.type === animal.id);
@@ -1093,28 +1093,46 @@
                         chunk.forEach(group => {
                             const subCtrl = group.controlNumber ? `駆除番号: ${group.controlNumber}` : '';
                             const subSeq = `連番: No.${group.serialNumber}`;
+                            const headerInfo = [subCtrl, subSeq].filter(Boolean).join(' ／ ');
 
-                            if (group.isEmpty) {
-                                for (let k = 0; k < 2; k++) {
-                                    gridHtml += `
-                                        <div class="print-other-photo-box">
-                                            <div class="print-sub-header">${subCtrl} ／ ${subSeq}</div>
-                                            <div class="print-other-empty">※ 撮影写真なし</div>
-                                        </div>
-                                    `;
-                                }
-                            } else {
+                            let selectedPhotos = [];
+                            if (!group.isEmpty) {
                                 group.photos.forEach((p, pIdx) => {
                                     if (group.selectedIndices[pIdx]) {
-                                        gridHtml += `
-                                            <div class="print-other-photo-box">
-                                                <div class="print-sub-header">${subCtrl} ／ ${subSeq}</div>
-                                                <img src="${p.url}">
-                                            </div>
-                                        `;
+                                        selectedPhotos.push(p.url);
                                     }
                                 });
                             }
+
+                            gridHtml += `
+                                <div class="print-other-pair-box">
+                                    <div class="print-sub-header">${headerInfo}</div>
+                                    <div class="print-pair-photos">
+                            `;
+
+                            if (group.isEmpty) {
+                                gridHtml += `
+                                    <div class="print-other-empty">※ 撮影写真なし</div>
+                                    <div class="print-other-empty">※ 撮影写真なし</div>
+                                `;
+                            } else {
+                                if (selectedPhotos.length > 0) {
+                                    gridHtml += `<img src="${selectedPhotos[0]}">`;
+                                } else {
+                                    gridHtml += `<div class="print-other-empty">※ 撮影写真なし</div>`;
+                                }
+
+                                if (selectedPhotos.length > 1) {
+                                    gridHtml += `<img src="${selectedPhotos[1]}">`;
+                                } else {
+                                    gridHtml += `<div class="print-other-empty">※ 撮影写真なし</div>`;
+                                }
+                            }
+
+                            gridHtml += `
+                                    </div>
+                                </div>
+                            `;
                         });
 
                         gridHtml += '</div>';
@@ -1131,8 +1149,8 @@
             @page {
                 size: A4 portrait;
                 margin: 10mm;
-		margin-top: 5mm;
-        	margin-bottom: 5mm;
+                margin-top: 5mm;
+                margin-bottom: 5mm;
             }
             body {
                 background: white !important;
@@ -1157,7 +1175,7 @@
                 font-weight: bold;
                 border-bottom: 2px solid black;
                 padding-bottom: 2mm;
-                margin-bottom: 5mm;
+                margin-bottom: 4mm;
             }
             .print-deer-grid {
                 display: flex;
@@ -1190,45 +1208,58 @@
                 border-radius: 6px;
             }
             .print-other-grid {
-                display: grid;
-                grid-template-columns: repeat(2, 1fr);
-                grid-template-rows: repeat(4, 1fr);
-                gap: 4mm;
-                height: 250mm;
-            }
-            .print-other-photo-box {
-                border: 1px solid #ccc;
-                padding: 2mm;
                 display: flex;
                 flex-direction: column;
-                justify-content: center;
-                align-items: center;
+                gap: 3mm;
+                height: 250mm;
+            }
+            .print-other-pair-box {
+                border: 1px solid #333;
+                padding: 2mm 3mm;
+                display: flex;
+                flex-direction: column;
                 background: #fff;
                 border-radius: 4px;
+                box-sizing: border-box;
+                height: 60mm;
+                justify-content: space-between;
             }
             .print-sub-header {
-                font-size: 9pt;
+                font-size: 8.5pt;
                 font-weight: bold;
+                text-align: center;
                 margin-bottom: 1mm;
+                border-bottom: 1px dotted #ccc;
+                padding-bottom: 0.5mm;
             }
-            .print-other-photo-box img {
+            .print-pair-photos {
+                display: flex;
+                flex-direction: row;
+                gap: 3mm;
                 width: 100%;
-                height: 50mm;
+                height: 48mm;
+                justify-content: space-between;
+            }
+            .print-pair-photos img {
+                width: calc(50% - 1.5mm);
+                height: 100%;
                 object-fit: contain;
                 border-radius: 2px;
+                border: 1px solid #eee;
             }
             .print-other-empty {
-                width: 100%;
-                height: 50mm;
+                width: calc(50% - 1.5mm);
+                height: 100%;
                 border: 1px dashed #aaa;
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                font-size: 10pt;
+                font-size: 8.5pt;
                 font-weight: bold;
                 color: #666;
+                background: #fafafa;
+                border-radius: 2px;
             }
-                /* 最後のページだけ改ページを無効化する */
             .print-page:last-of-type {
                 page-break-after: auto !important;
                 break-after: auto !important;
