@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>猟友会 らくらく写真帳</title>
+
+<!-- ブラウザのタブやブックマーク用アイコン -->
+    <link rel="icon" href="./images/icon.png" type="image/png">
+    
+    <!-- Appleデバイス（iPhone/iPad）のホーム画面追加用アイコン -->
+    <link rel="apple-touch-icon" href="./images/icon.png">
+    
+    <!-- Windowsのピン留めやスマホ用テーマカラー設定（必要に応じて） -->
+    <meta name="theme-color" content="#059669">
+
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- exifr CDN for EXIF parsing -->
@@ -60,12 +70,21 @@
                     <button id="re-group-btn" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg text-base font-bold transition">再グループ化</button>
                 </div>
                 
-                <!-- 種類・番号設定ポップアップを開くボタン（大きく目立つように調整） -->
+                <!-- 種類・番号設定ポップアップを開くボタン -->
                 <button id="open-settings-modal-btn" type="button" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-xl text-base font-bold shadow-md transition flex items-center justify-center gap-2 w-full md:w-auto">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                    <span> 駆除番号・開始番号の設定を変更する</span>
+                    <span>駆除番号・開始番号の設定を変更する</span>
                 </button>
             </div>
+
+            <!-- 写真一覧フィルターバー -->
+            <div class="pt-3 border-t border-slate-200">
+                <span class="block text-xs font-bold text-slate-500 mb-2">▼ 表示するグループのフィルター：</span>
+                <div id="display-filter-buttons" class="flex flex-wrap gap-2">
+                    <!-- JSで動的生成 -->
+                </div>
+            </div>
+
             <p class="text-xs text-slate-500">※Exif日時がない写真や誤ってまとまった写真は、各写真下のボタンや「写真なしの整理」で手動整理できます。</p>
         </div>
 
@@ -94,7 +113,7 @@
         </div>
     </div>
 
-    <!-- 右下固定フローティングアクションバー（途中保存・クイック操作用） -->
+    <!-- 右下固定フローティングアクションバー -->
     <div id="floating-action-bar" class="hidden fixed bottom-5 right-5 z-40 flex items-center gap-2 bg-white/95 backdrop-blur-sm p-3 rounded-2xl shadow-2xl border-2 border-slate-200">
         <button id="open-empty-modal-btn-float" type="button" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-3 rounded-xl font-bold shadow transition flex items-center gap-1.5 text-sm">
             <span>＋ 写真なし整理</span>
@@ -120,7 +139,7 @@
             </div>
             <div class="p-6 flex-1 overflow-y-auto">
                 <div id="start-settings-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <!-- JSで動적生成 -->
+                    <!-- JSで動的生成 -->
                 </div>
             </div>
             <div class="p-4 bg-slate-50 border-t text-right">
@@ -146,28 +165,23 @@
             <!-- モーダル内：動物種類フィルターボタン（横1列） -->
             <div class="p-4 bg-slate-100 border-b">
                 <span class="block text-xs font-bold text-slate-500 mb-2">▼ 表示・編集する動物の種類を選択：</span>
-                <div id="modal-filter-buttons" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
-                    <!-- JSで動적生成 -->
+                <div id="modal-filter-buttons" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2">
+                    <!-- JSで動的生成 -->
                 </div>
             </div>
 
             <!-- モーダル内：登録一覧 ＆ 追加エリア -->
             <div class="p-6 flex-1 overflow-y-auto space-y-4">
-                <div class="flex items-center justify-between bg-amber-50 border border-amber-200 p-4 rounded-xl">
-                    <div>
-                        <span id="current-filter-name" class="font-bold text-amber-900 text-base">【シカ】</span>
-                        <p class="text-xs text-amber-700 mt-0.5">一番上または各行のボタンから、お好きな位置に「写真なしの個体」を追加できます。</p>
-                    </div>
-                    <button id="modal-add-top-btn" class="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-bold shadow transition text-sm">
-                        ＋ 最上部に写真なしを追加
-                    </button>
+                <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl">
+                    <span id="current-filter-name" class="font-bold text-amber-900 text-base">【シカ】</span>
+                    <p class="text-xs text-amber-700 mt-0.5">各行の「＋ 写真なし追加」ボタンから、お好きな位置に「写真なしの個体」を追加できます。</p>
                 </div>
 
                 <hr class="my-2">
 
                 <h4 class="text-sm font-bold text-slate-700">現在の登録一覧（写真プレビュー確認 ＆ 位置調整）：</h4>
                 <div id="modal-animal-list" class="space-y-3">
-                    <!-- JSで動적生成 -->
+                    <!-- JSで動的生成 -->
                 </div>
             </div>
         </div>
@@ -185,6 +199,7 @@
     <!-- アプリケーションロジック -->
     <script>
         const ANIMAL_TYPES = [
+            { id: 'unclassified', name: '未分類', max: 2 },
             { id: 'deer', name: 'シカ', max: 3 },
             { id: 'raccoon', name: 'アライグマ', max: 2 },
             { id: 'fox', name: 'キツネ', max: 2 },
@@ -197,8 +212,10 @@
         let rawPhotos = [];
         let groups = [];
         let activeModalFilterType = 'deer';
+        let currentDisplayFilter = 'all'; // 写真選択画面のフィルター初期値「すべて」
         
         let startSettings = {
+            unclassified: { num: 1, ctrl: '' },
             deer: { num: 1, ctrl: '' },
             raccoon: { num: 1, ctrl: '' },
             fox: { num: 1, ctrl: '' },
@@ -222,6 +239,7 @@
         const loadProjectInput = document.getElementById('load-project-input');
         const thresholdSelect = document.getElementById('time-threshold');
         const startSettingsContainer = document.getElementById('start-settings-container');
+        const displayFilterButtons = document.getElementById('display-filter-buttons');
 
         const settingsModal = document.getElementById('settings-modal');
         const openSettingsModalBtn = document.getElementById('open-settings-modal-btn');
@@ -233,7 +251,6 @@
         const openEmptyModalBtnFloat = document.getElementById('open-empty-modal-btn-float');
         const closeEmptyModalBtn = document.getElementById('close-empty-modal-btn');
         const modalFilterButtons = document.getElementById('modal-filter-buttons');
-        const modalAddTopBtn = document.getElementById('modal-add-top-btn');
         const modalAnimalList = document.getElementById('modal-animal-list');
         const currentFilterName = document.getElementById('current-filter-name');
 
@@ -243,7 +260,8 @@
 
         function renderStartSettings() {
             startSettingsContainer.innerHTML = '';
-            ANIMAL_TYPES.forEach(animal => {
+            // 「未分類」を除外して描画
+            ANIMAL_TYPES.filter(animal => animal.id !== 'unclassified').forEach(animal => {
                 const setting = startSettings[animal.id];
                 const div = document.createElement('div');
                 div.className = 'bg-slate-50 p-4 rounded-xl border-2 border-slate-200 flex flex-col gap-2.5';
@@ -329,18 +347,6 @@
             renderGroups();
         });
 
-        modalAddTopBtn.addEventListener('click', () => {
-            groups.unshift({
-                photos: [],
-                type: activeModalFilterType,
-                controlNumber: '',
-                selectedIndices: [],
-                isEmpty: true
-            });
-            updateGroupNumbersAndControlNums();
-            renderModalContent();
-        });
-
         lightboxModal.addEventListener('click', () => {
             lightboxModal.classList.add('hidden');
         });
@@ -379,7 +385,7 @@
             const filteredGroups = groups.map((g, idx) => ({ group: g, index: idx })).filter(item => item.group.type === activeModalFilterType);
 
             if (filteredGroups.length === 0) {
-                modalAnimalList.innerHTML = '<p class="text-sm text-slate-400 py-3 text-center">この動物のデータはまだありません。</p>';
+                modalAnimalList.innerHTML = '<p class="text-sm text-slate-400 py-3 text-center">この種類のデータはまだありません。</p>';
                 return;
             }
 
@@ -653,7 +659,8 @@
         }
 
         function createGroupObj(photos) {
-            const type = photos.length >= 3 ? 'deer' : 'raccoon';
+            // 初期値は「未分類 (unclassified)」にする
+            const type = 'unclassified';
             const animalConfig = ANIMAL_TYPES.find(a => a.id === type);
             const maxSelected = animalConfig.max;
 
@@ -677,9 +684,9 @@
 
             let typeCounters = { ...counters };
             groups.forEach(group => {
-                group.serialNumber = typeCounters[group.type];
+                group.serialNumber = typeCounters[group.type] || 1;
                 group.controlNumber = baseCtrls[group.type] ? baseCtrls[group.type] : '';
-                typeCounters[group.type]++;
+                typeCounters[group.type] = (typeCounters[group.type] || 1) + 1;
             });
         }
 
@@ -771,15 +778,58 @@
             renderGroups();
         }
 
+        function renderDisplayFilterButtons() {
+            displayFilterButtons.innerHTML = '';
+            
+            // 「すべて」ボタン
+            const allActive = currentDisplayFilter === 'all';
+            const allClass = allActive ? 'bg-slate-700 text-white shadow-md' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300';
+            displayFilterButtons.innerHTML += `
+                <button type="button" data-display-filter="all" class="py-2 px-3 rounded-lg text-xs font-bold transition ${allClass}">
+                    すべて
+                </button>
+            `;
+
+            // 各動物種 ＋ 未分類 ボタン
+            ANIMAL_TYPES.forEach(a => {
+                const isActive = currentDisplayFilter === a.id;
+                const btnClass = isActive
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300';
+                displayFilterButtons.innerHTML += `
+                    <button type="button" data-display-filter="${a.id}" class="py-2 px-3 rounded-lg text-xs font-bold transition ${btnClass}">
+                        ${a.name}
+                    </button>
+                `;
+            });
+
+            document.querySelectorAll('[data-display-filter]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    currentDisplayFilter = e.target.dataset.displayFilter;
+                    renderDisplayFilterButtons();
+                    renderGroups();
+                });
+            });
+        }
+
         function renderGroups() {
+            renderDisplayFilterButtons();
             groupsContainer.innerHTML = '';
 
-            if (groups.length === 0) {
-                groupsContainer.innerHTML = '<p class="text-center text-slate-400">グループがありません</p>';
+            // フィルター適用
+            const filteredGroups = groups.map((g, idx) => ({ group: g, index: idx })).filter(item => {
+                if (currentDisplayFilter === 'all') return true;
+                return item.group.type === currentDisplayFilter;
+            });
+
+            if (filteredGroups.length === 0) {
+                groupsContainer.innerHTML = '<p class="text-center text-slate-400 py-6">該当するグループはありません</p>';
                 return;
             }
 
-            groups.forEach((group, gIndex) => {
+            filteredGroups.forEach((item) => {
+                const group = item.group;
+                const gIndex = item.index;
                 const animalConfig = ANIMAL_TYPES.find(a => a.id === group.type);
                 
                 const card = document.createElement('div');
@@ -826,7 +876,7 @@
                             </div>
                             <div class="w-full pt-1">
                                 <span class="block text-xs font-bold text-slate-500 mb-1.5">▼ 動物の種類を選択（クリックで切り替え）：</span>
-                                <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 w-full">
+                                <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2 w-full">
                                     ${typeButtonsHtml}
                                 </div>
                             </div>
@@ -868,7 +918,6 @@
                                     <span class="text-xs text-slate-400 mt-0.5 mb-2">撮影時刻: ${p.dateTime.toLocaleTimeString()}</span>
                                 </div>
                                 
-                                <!-- 写真個別移動・分割ボタン -->
                                 <div class="pt-2 border-t border-slate-200/80 flex flex-wrap items-center justify-center gap-1.5">
                                     <button type="button" data-photo-to-prev="${gIndex}-${pIndex}" class="bg-white hover:bg-sky-50 text-sky-700 border border-sky-300 px-2.5 py-1 rounded text-xs font-bold transition" title="この写真1枚を上のグループへ移動します">
                                         ↑ 上のグループへ
@@ -898,7 +947,7 @@
                             
                             <div class="w-full pt-1">
                                 <span class="block text-xs font-bold text-slate-500 mb-1.5">▼ 動物の種類を選択（クリックで切り替え）：</span>
-                                <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 w-full">
+                                <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2 w-full">
                                     ${typeButtonsHtml}
                                 </div>
                             </div>
@@ -999,15 +1048,7 @@
         }
     </script>
 
-    <!-- 印刷用スタイル -->
-    <style>
-        @media print {
-            body { background: white; padding: 0; }
-            header, #drop-zone, #controls, #groups-container, #bottom-action-bar, #floating-action-bar, .bg-white.shadow.rounded-xl.p-4.mb-6.flex { display: none !important; }
-        }
-    </style>
-
-    <!-- 印刷用スクリプト -->
+    <!-- 印刷用スクリプト（「未分類」は出力から除外） -->
     <script>
         window.addEventListener('beforeprint', () => {
             let oldPrintArea = document.getElementById('print-area');
@@ -1018,6 +1059,9 @@
             document.body.appendChild(printArea);
 
             ANIMAL_TYPES.forEach(animal => {
+                // 「未分類」は印刷対象外とする
+                if (animal.id === 'unclassified') return;
+
                 const animalGroups = groups.filter(g => g.type === animal.id);
                 if (animalGroups.length === 0) return;
 
