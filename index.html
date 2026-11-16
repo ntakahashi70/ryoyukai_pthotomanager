@@ -781,6 +781,36 @@
             renderCurrentView();
         }
 
+        // 写真1枚を上のグループまたは下のグループへ移動させる関数
+        function movePhotoToAdjacentGroup(gIdx, pIdx, direction) {
+            const targetGroupIdx = direction === 'prev' ? gIdx - 1 : gIdx + 1;
+            if (targetGroupIdx < 0 || targetGroupIdx >= groups.length) return;
+
+            // 移動させる写真と選択状態を取り出す
+            const photo = groups[gIdx].photos.splice(pIdx, 1)[0];
+            const selected = groups[gIdx].selectedIndices.splice(pIdx, 1)[0];
+
+            // 移行先のグループに追加
+            if (groups[targetGroupIdx].isEmpty) {
+                // 移行先が「写真なし」枠だった場合は写真を実体化させる
+                groups[targetGroupIdx].isEmpty = false;
+                groups[targetGroupIdx].photos = [photo];
+                groups[targetGroupIdx].selectedIndices = [selected];
+            } else {
+                groups[targetGroupIdx].photos.push(photo);
+                groups[targetGroupIdx].selectedIndices.push(selected);
+                normalizeGroupSelections(groups[targetGroupIdx]);
+            }
+
+            // 元のグループが空になってしまった場合はグループ自体を削除する
+            if (groups[gIdx].photos.length === 0 && !groups[gIdx].isEmpty) {
+                groups.splice(gIdx, 1);
+            }
+
+            updateGroupNumbersAndControlNums();
+            renderCurrentView();
+        }
+
         // ============================================================
         // ① 1件ずつ仕分けモード（ステップビュー）描画ロジック
         // ============================================================
@@ -803,7 +833,6 @@
             const classifiedCount = groups.length - unclassifiedCount;
             const progressPercent = Math.round((classifiedCount / groups.length) * 100);
 
-            // 最後のグループを分類し終えた時の完了画面（画面スクロールを強制せずその場で綺麗に収まる設計）
             if (isStepCompleted) {
                 stepViewContainer.innerHTML = `
                     <div id="step-counter-anchor" class="bg-white shadow-lg border-2 border-emerald-500 rounded-2xl p-6 sm:p-8 text-center space-y-6">
@@ -1005,7 +1034,6 @@
                     if (anchor) anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 } else {
                     isStepCompleted = true;
-                    // 仕分け終了時は画面を強制せず、その場（カウンター位置あたり）を自然に維持
                     const anchor = document.getElementById('step-counter-anchor');
                     if (anchor) anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
@@ -1146,13 +1174,14 @@
                     ? 'bg-amber-50/70 shadow rounded-xl p-5 sm:p-6 border-2 border-amber-300'
                     : 'bg-white shadow rounded-xl p-5 sm:p-6 border border-slate-200';
                 
+                // グループ上部のボタン名を「まとめて上の個体へ」「まとめて下の個体へ」に改名
                 const moveControlsHtml = `
                     <div class="flex items-center gap-1.5 ml-auto">
                         <button type="button" data-move-up="${gIndex}" ${gIndex === 0 ? 'disabled' : ''} class="bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-slate-700 border px-2.5 py-1 rounded-lg text-xs font-bold transition">
-                            ↑ 上の個体へ
+                            ↑ まとめて上の個体へ
                         </button>
                         <button type="button" data-move-down="${gIndex}" ${gIndex === groups.length - 1 ? 'disabled' : ''} class="bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-slate-700 border px-2.5 py-1 rounded-lg text-xs font-bold transition">
-                            ↓ 下の個体へ
+                            ↓ まとめて下の個体へ
                         </button>
                     </div>
                 `;
@@ -1228,10 +1257,10 @@
                                 </div>
                                 
                                 <div class="pt-2 border-t border-slate-200/80 flex flex-wrap items-center justify-center gap-1.5">
-                                    <button type="button" data-photo-to-prev="${gIndex}-${pIndex}" class="bg-white hover:bg-sky-50 text-sky-700 border border-sky-300 px-2.5 py-1 rounded text-xs font-bold transition" title="この写真1枚を上の個体へ移動します">
+                                    <button type="button" data-photo-to-prev="${gIndex}-${pIndex}" ${gIndex === 0 ? 'disabled' : ''} class="bg-white hover:bg-sky-50 disabled:opacity-30 text-sky-700 border border-sky-300 px-2.5 py-1 rounded text-xs font-bold transition" title="この写真1枚を上の個体へ移動します">
                                         ↑ 上の個体へ
                                     </button>
-                                    <button type="button" data-photo-to-next="${gIndex}-${pIndex}" class="bg-white hover:bg-sky-50 text-sky-700 border border-sky-300 px-2.5 py-1 rounded text-xs font-bold transition" title="この写真1枚を下の個体へ移動します">
+                                    <button type="button" data-photo-to-next="${gIndex}-${pIndex}" ${gIndex === groups.length - 1 ? 'disabled' : ''} class="bg-white hover:bg-sky-50 disabled:opacity-30 text-sky-700 border border-sky-300 px-2.5 py-1 rounded text-xs font-bold transition" title="This photo to next group">
                                         ↓ 下の個体へ
                                     </button>
                                     ${splitBtnHtml}
@@ -1286,6 +1315,7 @@
                 });
             });
 
+            // グループ全体の並び替え（上の個体へ）
             groupsContainer.querySelectorAll('[data-move-up]').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const gIdx = parseInt(e.target.dataset.moveUp);
@@ -1299,6 +1329,7 @@
                 });
             });
 
+            // グループ全体の並び替え（下の個体へ）
             groupsContainer.querySelectorAll('[data-move-down]').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const gIdx = parseInt(e.target.dataset.moveDown);
@@ -1309,6 +1340,24 @@
                         updateGroupNumbersAndControlNums();
                         renderGroups();
                     }
+                });
+            });
+
+            // 写真ごとの「上の個体へ」ボタンのイベント処理
+            groupsContainer.querySelectorAll('[data-photo-to-prev]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const [gIdx, pIdx] = e.target.dataset.photoToPrev.split('-').map(Number);
+                    movePhotoToAdjacentGroup(gIdx, pIdx, 'prev');
+                });
+            });
+
+            // 写真ごとの「下の個体へ」ボタンのイベント処理
+            groupsContainer.querySelectorAll('[data-photo-to-next]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const [gIdx, pIdx] = e.target.dataset.photoToNext.split('-').map(Number);
+                    movePhotoToAdjacentGroup(gIdx, pIdx, 'next');
                 });
             });
         }
@@ -1543,3 +1592,4 @@
     </style>
 </body>
 </html>
+
