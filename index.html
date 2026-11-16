@@ -47,7 +47,7 @@
 
         <!-- コントロールバー -->
         <div id="controls" class="hidden bg-white shadow rounded-xl p-4 sm:p-5 mb-4 sm:mb-6 space-y-4">
-            <!-- 表示モード切り替えバー（スマホはデフォルトで「1件ずつ仕分け」、PCは「一覧表示」） -->
+            <!-- 表示モード切り替えバー -->
             <div class="bg-slate-100 p-1.5 rounded-xl flex items-center gap-1.5 border border-slate-200">
                 <button id="mode-step-btn" type="button" class="flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5">
                     <span>📱 1件ずつ仕分け</span>
@@ -207,7 +207,7 @@
     <!-- アプリケーションロジック -->
     <script>
         const ANIMAL_TYPES = [
-            { id: 'unclassified', name: '未分類', max: 2 },
+            { id: 'unclassified', name: '未分類', max: 3 },
             { id: 'deer', name: 'シカ', max: 3 },
             { id: 'raccoon', name: 'アライグマ', max: 2 },
             { id: 'fox', name: 'キツネ', max: 2 },
@@ -726,7 +726,6 @@
 
         function createGroupObj(photos) {
             const type = 'unclassified';
-            // ★ 初期状態は「未採用」にするため、selectedIndicesはすべてfalseにする
             return {
                 photos: photos,
                 type: type,
@@ -872,34 +871,54 @@
             // 最後のグループを分類し終えた時の完了画面
             if (isStepCompleted) {
                 stepViewContainer.innerHTML = `
-                    <div class="bg-white shadow-lg border-2 border-emerald-500 rounded-2xl p-6 sm:p-8 text-center space-y-5">
+                    <div class="bg-white shadow-lg border-2 border-emerald-500 rounded-2xl p-6 sm:p-8 text-center space-y-6">
                         <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
                             <svg class="w-9 h-9" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
                         </div>
                         <div>
-                            <h2 class="text-xl sm:text-2xl font-bold text-slate-800">最後の個体まで確認しました！</h2>
+                            <h2 class="text-xl sm:text-2xl font-bold text-slate-800">お疲れ様でした！最後の個体まで確認しました！</h2>
                             <p class="text-sm text-slate-500 mt-1">
                                 分類済み: <span class="font-bold text-emerald-600">${classifiedCount}</span> / ${groups.length}件
                                 ${unclassifiedCount > 0 ? `<span class="text-amber-600 font-bold ml-2">（未分類が ${unclassifiedCount}件 残っています）</span>` : ''}
                             </p>
                         </div>
-                        <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-                            <button id="step-back-from-complete-btn" type="button" class="w-full sm:w-auto bg-slate-200 hover:bg-slate-300 text-slate-700 px-5 py-3 rounded-xl font-bold text-sm transition">
-                                ← 前の個体に戻る
-                            </button>
-                            <button id="step-goto-list-btn" type="button" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold text-sm shadow transition">
-                                📋 一覧表示で全体を確認・印刷する
+                        
+                        <!-- 完了画面にも各種アクションボタン（写真なし整理、作業保存、印刷、一覧確認）を配置 -->
+                        <div class="bg-slate-50 p-4 sm:p-5 rounded-xl border border-slate-200 flex flex-col gap-3">
+                            <span class="text-xs font-bold text-slate-600">▼ 写真の選択・確認が終わったらこちらから行えます：</span>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+                                <button id="complete-empty-btn" type="button" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-3 rounded-xl font-bold text-xs sm:text-sm shadow transition flex items-center justify-center gap-1.5">
+                                    <span>＋ 写真なしの整理</span>
+                                </button>
+                                <button id="complete-save-btn" type="button" class="bg-sky-600 hover:bg-sky-700 text-white px-4 py-3 rounded-xl font-bold text-xs sm:text-sm shadow transition flex items-center justify-center gap-1.5">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                                    作業を保存
+                                </button>
+                                <button id="complete-print-btn" type="button" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-xl font-bold text-xs sm:text-sm shadow transition flex items-center justify-center gap-1.5">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                                    写真帳を印刷・PDF出力
+                                </button>
+                                <button id="complete-goto-list-btn" type="button" class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-3 rounded-xl font-bold text-xs sm:text-sm shadow transition flex items-center justify-center gap-1.5">
+                                    📋 一覧表示へ切替
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="pt-2">
+                            <button id="step-back-from-complete-btn" type="button" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition">
+                                ← 前の個体に戻って再確認する
                             </button>
                         </div>
                     </div>
                 `;
 
+                document.getElementById('complete-empty-btn').addEventListener('click', openEmptyManagerModal);
+                document.getElementById('complete-save-btn').addEventListener('click', saveProject);
+                document.getElementById('complete-print-btn').addEventListener('click', triggerPrint);
+                document.getElementById('complete-goto-list-btn').addEventListener('click', () => setViewMode('list'));
                 document.getElementById('step-back-from-complete-btn').addEventListener('click', () => {
                     isStepCompleted = false;
                     renderStepView();
-                });
-                document.getElementById('step-goto-list-btn').addEventListener('click', () => {
-                    setViewMode('list');
                 });
                 return;
             }
@@ -908,9 +927,9 @@
             const group = groups[gIndex];
             const animalConfig = ANIMAL_TYPES.find(a => a.id === group.type);
 
-            // 進捗＆ナビゲーションバー
+            // 進捗＆ナビゲーションバー（ここが「件数表示の位置」）
             const navHtml = `
-                <div class="bg-white shadow rounded-xl p-3.5 sm:p-4 border border-slate-200 space-y-2.5">
+                <div id="step-counter-anchor" class="bg-white shadow rounded-xl p-3.5 sm:p-4 border border-slate-200 space-y-2.5">
                     <div class="flex items-center justify-between gap-2">
                         <button type="button" id="step-prev-btn" ${gIndex === 0 ? 'disabled' : ''} class="bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-slate-700 border border-slate-300 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition">
                             ← 前へ
@@ -936,7 +955,6 @@
                 </div>
             `;
 
-            // ★「未分類」を除外し、3列3行（grid-cols-3）のグリッドでボタンを配置
             let typeButtonsHtml = '';
             ANIMAL_TYPES.filter(a => a.id !== 'unclassified').forEach(a => {
                 const isActive = group.type === a.id;
@@ -989,7 +1007,6 @@
                         cardStyle = 'border-slate-200 bg-slate-100 opacity-75';
                     }
 
-                    // ★ 分割ボタンを「上段（写真移動ボタンの上）」に配置し、サイズも少し大きく改善
                     const splitBtnHtml = pIndex > 0
                         ? `<button type="button" data-split-photo="${gIndex}-${pIndex}" class="w-full bg-amber-100 hover:bg-amber-200 text-amber-900 border-2 border-amber-300 py-2 px-3 rounded-lg text-xs sm:text-sm font-bold transition mb-2 shadow-sm">✂ ここから別個体へ分割</button>`
                         : '';
@@ -1039,7 +1056,6 @@
 
                         <div class="pt-3 border-t-2 border-slate-100">
                             <span class="block text-xs sm:text-sm font-bold text-slate-700 mb-2">▼ 動物の種類をタップ（選択すると自動で次へ進みます）：</span>
-                            <!-- 3列3行のグリッド配置 -->
                             <div class="grid grid-cols-3 gap-2.5">
                                 ${typeButtonsHtml}
                             </div>
@@ -1097,6 +1113,14 @@
                         isStepCompleted = true;
                     }
                     renderStepView();
+
+                    // 動物の種類をタップ時、件数表示の位置（#step-counter-anchor）まで画面をスムーズに移動
+                    const anchor = document.getElementById('step-counter-anchor');
+                    if (anchor) {
+                        anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
                 });
             });
 
@@ -1473,6 +1497,7 @@
                             `;
                         });
 
+                        gridHtml += '`';
                         gridHtml += '</div>';
                         pageDiv.innerHTML = headerHtml + gridHtml;
                         printArea.appendChild(pageDiv);
@@ -1601,9 +1626,8 @@
             .print-page:last-of-type {
                 page-break-after: auto !important;
                 break-after: auto !important;
-            }
+            }å
         }
     </style>
 </body>
 </html>
-
