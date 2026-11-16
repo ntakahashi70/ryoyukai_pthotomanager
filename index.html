@@ -47,47 +47,51 @@
 
         <!-- コントロールバー -->
         <div id="controls" class="hidden bg-white shadow rounded-xl p-4 sm:p-5 mb-4 sm:mb-6 space-y-4">
-            <!-- 表示モード切り替えバー -->
-            <div class="bg-slate-100 p-1.5 rounded-xl flex items-center gap-1.5 border border-slate-200">
-                <button id="mode-step-btn" type="button" class="flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5">
-                    <span>📱 1件ずつ仕分け</span>
+            <!-- メニュー開閉ボタン（普段は上部メニューを格納） -->
+            <div class="flex items-center justify-between gap-2">
+                <button id="toggle-top-menu-btn" type="button" aria-expanded="false" class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-sm transition flex items-center gap-2">
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    <span id="toggle-top-menu-label">メニュー</span>
                 </button>
-                <button id="mode-list-btn" type="button" class="flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5">
-                    <span>📋 一覧表示</span>
-                </button>
+                <span id="current-mode-badge" class="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg"></span>
             </div>
 
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
-                <!-- グループ判定間隔と再グループ化ボタンをスマホでも同じ行に収まるよう調整 -->
-                <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
-                    <div class="flex-1 sm:flex-initial">
-                        <label class="block sm:inline text-xs sm:text-sm font-bold text-slate-700 mb-1 sm:mb-0 sm:mr-1.5">グループ判定間隔:</label>
-                        <select id="time-threshold" class="w-full sm:w-auto border-2 border-slate-300 rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-base bg-slate-50 font-medium">
-                            <option value="5">5分以内</option>
-                            <option value="15" selected>15分以内</option>
-                            <option value="30">30分以内</option>
-                            <option value="60">60分以内</option>
-                        </select>
+            <!-- 折りたたみ可能な上部メニュー（初期状態は非表示） -->
+            <div id="top-menu-panel" class="hidden pt-3 border-t border-slate-200 space-y-4">
+                <!-- 表示モード切り替えバー -->
+                <div class="bg-slate-100 p-1.5 rounded-xl flex items-center gap-1.5 border border-slate-200">
+                    <button id="mode-step-btn" type="button" class="flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5">
+                        <span>📱 1件ずつ仕分け</span>
+                    </button>
+                    <button id="mode-list-btn" type="button" class="flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5">
+                        <span>📋 一覧表示</span>
+                    </button>
+                </div>
+
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+                    <!-- グループ判定間隔と再グループ化ボタンをスマホでも同じ行に収まるよう調整 -->
+                    <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                        <div class="flex-1 sm:flex-initial">
+                            <label class="block sm:inline text-xs sm:text-sm font-bold text-slate-700 mb-1 sm:mb-0 sm:mr-1.5">グループ判定間隔:</label>
+                            <select id="time-threshold" class="w-full sm:w-auto border-2 border-slate-300 rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-base bg-slate-50 font-medium">
+                                <option value="5">5分以内</option>
+                                <option value="15" selected>15分以内</option>
+                                <option value="30">30分以内</option>
+                                <option value="60">60分以内</option>
+                            </select>
+                        </div>
+                        <button id="re-group-btn" class="shrink-0 bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-base font-bold transition self-end sm:self-auto">再グループ化</button>
                     </div>
-                    <button id="re-group-btn" class="shrink-0 bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-base font-bold transition self-end sm:self-auto">再グループ化</button>
                 </div>
-                
-                <!-- 種類・番号設定ポップアップを開くボタン -->
-                <button id="open-settings-modal-btn" type="button" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl text-sm sm:text-base font-bold shadow-md transition flex items-center justify-center gap-2 w-full md:w-auto">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                    <span>駆除番号・開始番号の設定</span>
-                </button>
-            </div>
 
-            <!-- 写真一覧フィルターバー（一覧モード時のみ表示） -->
-            <div id="filter-bar-wrapper" class="pt-3 border-t border-slate-200">
-                <span class="block text-xs font-bold text-slate-500 mb-2">▼ 表示する鳥獣のフィルター：</span>
-                <div id="display-filter-buttons" class="flex flex-wrap gap-1.5 sm:gap-2">
-                    <!-- JSで動的生成 -->
+                <!-- 写真一覧フィルターバー（メニュー内に格納・一覧モード時のみ表示） -->
+                <div id="filter-bar-wrapper" class="pt-3 border-t border-slate-200">
+                    <span class="block text-xs font-bold text-slate-500 mb-2">▼ 表示する鳥獣のフィルター：</span>
+                    <div id="display-filter-buttons" class="flex flex-wrap gap-1.5 sm:gap-2">
+                        <!-- JSで動的生成 -->
+                    </div>
                 </div>
             </div>
-
-            <p class="text-xs text-slate-500">※Exif日時がない写真や誤ってまとまった写真は、各写真下のボタンや「写真なしの整理」で手動整理できます。</p>
         </div>
 
         <!-- ① 1件ずつ仕分けモード（ステップビュー）コンテナ -->
@@ -100,11 +104,15 @@
         <div id="bottom-action-bar" class="hidden mt-8 bg-white shadow-lg border-2 border-emerald-500 rounded-xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
                 <h3 class="text-base font-bold text-slate-700">お疲れ様でした！写真の選択・確認が終わったら</h3>
-                <p class="text-xs text-slate-500 mt-0.5">撮り忘れ（写真なし）の追加や、作業の保存・印刷がここから行えます。</p>
+                <p class="text-xs text-slate-500 mt-0.5">撮り忘れ（写真のない個体）の追加や、作業の保存・印刷がここから行えます。</p>
             </div>
             <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                <button id="open-settings-modal-btn-bottom" type="button" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-bold shadow transition flex items-center gap-2 text-xs sm:text-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <span>駆除番号・開始番号の設定</span>
+                </button>
                 <button id="open-empty-modal-btn" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-xl font-bold shadow transition flex items-center gap-2 text-xs sm:text-sm">
-                    <span>＋ 写真なしの整理</span>
+                    <span>＋ 写真がない個体の整理</span>
                 </button>
                 <button id="save-project-btn-bottom" class="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2.5 rounded-xl font-bold shadow transition flex items-center gap-2 text-xs sm:text-sm">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
@@ -119,7 +127,10 @@
     </div>
 
     <!-- 右下固定フローティングアクションバー（一覧表示モードの時だけ表示） -->
-    <div id="floating-action-bar" class="hidden fixed bottom-3 right-3 sm:bottom-4 sm:right-4 z-40 flex items-center gap-1.5 bg-white/95 backdrop-blur-sm p-2 rounded-xl shadow-2xl border-2 border-slate-200">
+    <div id="floating-action-bar" class="hidden fixed bottom-3 right-3 sm:bottom-4 sm:right-4 z-40 flex flex-wrap justify-end items-center gap-1.5 bg-white/95 backdrop-blur-sm p-2 rounded-xl shadow-2xl border-2 border-slate-200 max-w-[95vw]">
+        <button id="open-settings-modal-btn-float" type="button" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 sm:px-3 py-2 rounded-lg font-bold shadow transition flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap">
+            <span>＋駆除番号</span>
+        </button>
         <button id="open-empty-modal-btn-float" type="button" class="bg-amber-500 hover:bg-amber-600 text-white px-2.5 sm:px-3 py-2 rounded-lg font-bold shadow transition flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap">
             <span>＋ 写真なし</span>
         </button>
@@ -165,7 +176,7 @@
             <!-- モーダルヘッダー -->
             <div class="bg-slate-800 text-white p-5 flex items-center justify-between">
                 <div>
-                    <h2 class="text-lg sm:text-xl font-bold">写真なしの整理（欠番・記録の追加）</h2>
+                    <h2 class="text-lg sm:text-xl font-bold">写真がない個体の整理</h2>
                     <p class="text-xs text-slate-300 mt-0.5">写真を確認しながら、目的の場所のすぐ下に「写真なし」を追加したり並び替えができます。</p>
                 </div>
                 <button id="close-empty-modal-btn" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition">閉じる</button>
@@ -183,7 +194,7 @@
             <div class="p-5 sm:p-6 flex-1 overflow-y-auto space-y-4">
                 <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl">
                     <span id="current-filter-name" class="font-bold text-amber-900 text-base">【シカ】</span>
-                    <p class="text-xs text-amber-700 mt-0.5">各行の「＋ 写真なし追加」ボタンから、お好きな位置に「写真なしの個体」を追加できます。</p>
+                    <p class="text-xs text-amber-700 mt-0.5">各行の「＋ 写真なし追加」ボタンから、お好きな位置に「写真がない個体」を追加できます。</p>
                 </div>
 
                 <hr class="my-2">
@@ -259,10 +270,29 @@
         const startSettingsContainer = document.getElementById('start-settings-container');
         const displayFilterButtons = document.getElementById('display-filter-buttons');
 
+        const toggleTopMenuBtn = document.getElementById('toggle-top-menu-btn');
+        const toggleTopMenuLabel = document.getElementById('toggle-top-menu-label');
+        const topMenuPanel = document.getElementById('top-menu-panel');
+        const currentModeBadge = document.getElementById('current-mode-badge');
+
         const settingsModal = document.getElementById('settings-modal');
-        const openSettingsModalBtn = document.getElementById('open-settings-modal-btn');
+        const openSettingsModalBtnBottom = document.getElementById('open-settings-modal-btn-bottom');
+        const openSettingsModalBtnFloat = document.getElementById('open-settings-modal-btn-float');
         const closeSettingsModalBtn = document.getElementById('close-settings-modal-btn');
         const applySettingsModalBtn = document.getElementById('apply-settings-modal-btn');
+
+        toggleTopMenuBtn.addEventListener('click', () => {
+            const isHidden = topMenuPanel.classList.contains('hidden');
+            if (isHidden) {
+                topMenuPanel.classList.remove('hidden');
+                toggleTopMenuBtn.setAttribute('aria-expanded', 'true');
+                toggleTopMenuLabel.textContent = 'メニューを閉じる';
+            } else {
+                topMenuPanel.classList.add('hidden');
+                toggleTopMenuBtn.setAttribute('aria-expanded', 'false');
+                toggleTopMenuLabel.textContent = 'メニュー';
+            }
+        });
 
         const modal = document.getElementById('empty-manager-modal');
         const openEmptyModalBtn = document.getElementById('open-empty-modal-btn');
@@ -289,12 +319,14 @@
             if (viewMode === 'step') {
                 modeStepBtn.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 bg-emerald-600 text-white shadow';
                 modeListBtn.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 text-slate-600 hover:bg-white/60';
+                if (currentModeBadge) currentModeBadge.textContent = '現在：📱 1件ずつ仕分け';
                 filterBarWrapper.classList.add('hidden');
                 bottomActionBar.classList.add('hidden');
                 floatingActionBar.classList.add('hidden');
             } else {
                 modeListBtn.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 bg-emerald-600 text-white shadow';
                 modeStepBtn.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 text-slate-600 hover:bg-white/60';
+                if (currentModeBadge) currentModeBadge.textContent = '現在：📋 一覧表示';
                 filterBarWrapper.classList.remove('hidden');
                 if (groups.length > 0) {
                     bottomActionBar.classList.remove('hidden');
@@ -351,10 +383,12 @@
             });
         }
 
-        openSettingsModalBtn.addEventListener('click', () => {
+        function openSettingsManagerModal() {
             renderStartSettings();
             settingsModal.classList.remove('hidden');
-        });
+        }
+        openSettingsModalBtnBottom.addEventListener('click', openSettingsManagerModal);
+        openSettingsModalBtnFloat.addEventListener('click', openSettingsManagerModal);
         closeSettingsModalBtn.addEventListener('click', () => {
             settingsModal.classList.add('hidden');
         });
@@ -459,7 +493,7 @@
                         }
                     });
                 } else {
-                    thumbsHtml = `<span class="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded">⚠️ 撮影写真なし（欠番）</span>`;
+                    thumbsHtml = `<span class="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded">⚠️ 撮影写真なし</span>`;
                 }
 
                 div.className = g.isEmpty
@@ -797,8 +831,15 @@
                 groups[targetGroupIdx].photos = [photo];
                 groups[targetGroupIdx].selectedIndices = [selected];
             } else {
-                groups[targetGroupIdx].photos.push(photo);
-                groups[targetGroupIdx].selectedIndices.push(selected);
+                if (direction === 'prev') {
+                    // 「上の個体へ」：上のグループの【一番後ろ（末尾）】に追加
+                    groups[targetGroupIdx].photos.push(photo);
+                    groups[targetGroupIdx].selectedIndices.push(selected);
+                } else {
+                    // 「下の個体へ」：下のグループの【一番前（先頭）】に追加
+                    groups[targetGroupIdx].photos.unshift(photo);
+                    groups[targetGroupIdx].selectedIndices.unshift(selected);
+                }
                 normalizeGroupSelections(groups[targetGroupIdx]);
             }
 
@@ -810,6 +851,7 @@
             updateGroupNumbersAndControlNums();
             renderCurrentView();
         }
+
 
         // ============================================================
         // ① 1件ずつ仕分けモード（ステップビュー）描画ロジック
@@ -849,7 +891,11 @@
                         
                         <div class="bg-slate-50 p-4 sm:p-5 rounded-xl border border-slate-200 flex flex-col gap-3">
                             <span class="text-xs font-bold text-slate-600">▼ 写真の選択・確認が終わったらこちらから行えます：</span>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                                <button id="complete-settings-btn" type="button" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-xl font-bold text-xs sm:text-sm shadow transition flex items-center justify-center gap-1.5">
+                                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                    <span>駆除番号・開始番号の設定</span>
+                                </button>
                                 <button id="complete-empty-btn" type="button" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-3 rounded-xl font-bold text-xs sm:text-sm shadow transition flex items-center justify-center gap-1.5">
                                     <span>＋ 写真なしの整理</span>
                                 </button>
@@ -875,6 +921,7 @@
                     </div>
                 `;
 
+                document.getElementById('complete-settings-btn').addEventListener('click', openSettingsManagerModal);
                 document.getElementById('complete-empty-btn').addEventListener('click', openEmptyManagerModal);
                 document.getElementById('complete-save-btn').addEventListener('click', saveProject);
                 document.getElementById('complete-print-btn').addEventListener('click', triggerPrint);
@@ -939,7 +986,7 @@
                                 ${animalConfig.name} No.${group.serialNumber}（写真なし）
                             </span>
                             <span class="text-xs font-bold text-amber-800 bg-amber-100 px-2.5 py-1 rounded-lg">
-                                ※ 欠番・写真なし枠
+                                ※ 写真なし枠
                             </span>
                         </div>
                         <div class="pt-2 border-t border-amber-200">
@@ -1207,7 +1254,7 @@
                                     ${animalConfig.name} No.${group.serialNumber}（写真なし）
                                 </span>
                                 <span class="text-sm font-bold text-amber-800 bg-amber-100 px-3 py-1 rounded-lg">
-                                    ※ 欠番・撮影写真なしとして連番に含めます
+                                    ※ 撮影写真なしとして連番に含めます
                                 </span>
                                 ${group.controlNumber ? `<span class="text-sm font-bold bg-white text-slate-700 px-3 py-1 rounded-lg border">駆除番号: ${group.controlNumber}</span>` : ''}
                                 ${moveControlsHtml}
@@ -1390,7 +1437,7 @@
                         
                         let imgsHtml = '<div class="print-deer-grid">';
                         if (group.isEmpty) {
-                            imgsHtml += `<div class="print-empty-box">※ 撮影写真なし（欠番・記録のみ）</div>`;
+                            imgsHtml += `<div class="print-empty-box">※ 撮影写真なし</div>`;
                         } else {
                             group.photos.forEach((p, pIdx) => {
                                 if (group.selectedIndices[pIdx]) {
@@ -1592,4 +1639,5 @@
     </style>
 </body>
 </html>
+
 
