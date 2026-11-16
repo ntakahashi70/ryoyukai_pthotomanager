@@ -95,7 +95,7 @@
         <!-- ② 一覧表示モードコンテナ -->
         <div id="groups-container" class="space-y-6"></div>
 
-        <!-- 最下部に配置された一括アクションバー -->
+        <!-- 最下部に配置された一括アクションバー（一覧表示モードの時だけ表示） -->
         <div id="bottom-action-bar" class="hidden mt-8 bg-white shadow-lg border-2 border-emerald-500 rounded-xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
                 <h3 class="text-base font-bold text-slate-700">お疲れ様でした！写真の選択・確認が終わったら</h3>
@@ -117,7 +117,7 @@
         </div>
     </div>
 
-    <!-- 右下固定フローティングアクションバー -->
+    <!-- 右下固定フローティングアクションバー（一覧表示モードの時だけ表示） -->
     <div id="floating-action-bar" class="hidden fixed bottom-3 right-3 sm:bottom-4 sm:right-4 z-40 flex items-center gap-1.5 bg-white/95 backdrop-blur-sm p-2 rounded-xl shadow-2xl border-2 border-slate-200">
         <button id="open-empty-modal-btn-float" type="button" class="bg-amber-500 hover:bg-amber-600 text-white px-2.5 sm:px-3 py-2 rounded-lg font-bold shadow transition flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap">
             <span>＋ 写真なし</span>
@@ -289,10 +289,18 @@
                 modeStepBtn.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 bg-emerald-600 text-white shadow';
                 modeListBtn.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 text-slate-600 hover:bg-white/60';
                 filterBarWrapper.classList.add('hidden');
+                // 1件ずつ仕分けモードの時は下部・右下のバーを非表示
+                bottomActionBar.classList.add('hidden');
+                floatingActionBar.classList.add('hidden');
             } else {
                 modeListBtn.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 bg-emerald-600 text-white shadow';
                 modeStepBtn.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 text-slate-600 hover:bg-white/60';
                 filterBarWrapper.classList.remove('hidden');
+                // 一覧表示モードの時はデータを読み込み済みであれば表示
+                if (groups.length > 0) {
+                    bottomActionBar.classList.remove('hidden');
+                    floatingActionBar.classList.remove('hidden');
+                }
             }
         }
 
@@ -616,8 +624,10 @@
                     currentStepIndex = 0;
                     isStepCompleted = false;
                     controls.classList.remove('hidden');
-                    bottomActionBar.classList.remove('hidden');
-                    floatingActionBar.classList.remove('hidden');
+                    if (viewMode === 'list') {
+                        bottomActionBar.classList.remove('hidden');
+                        floatingActionBar.classList.remove('hidden');
+                    }
                     renderStartSettings();
                     updateGroupNumbersAndControlNums();
                     renderCurrentView();
@@ -670,11 +680,13 @@
             dropZone.innerHTML = `
                 <svg class="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-emerald-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                 <p class="text-base sm:text-lg font-medium text-slate-700">${rawPhotos.length}枚の写真を読み込みました</p>
-                <p class="text-xs sm:text-sm text-slate-400 mt-1">追加でドロップするか、下の写真を確認してください</p>
+                <p class="text-sm text-slate-400 mt-1">追加でドロップするか、下の写真を確認してください</p>
             `;
             controls.classList.remove('hidden');
-            bottomActionBar.classList.remove('hidden');
-            floatingActionBar.classList.remove('hidden');
+            if (viewMode === 'list') {
+                bottomActionBar.classList.remove('hidden');
+                floatingActionBar.classList.remove('hidden');
+            }
             renderStartSettings();
 
             buildGroups();
@@ -714,14 +726,12 @@
 
         function createGroupObj(photos) {
             const type = 'unclassified';
-            const animalConfig = ANIMAL_TYPES.find(a => a.id === type);
-            const maxSelected = animalConfig.max;
-
+            // ★ 初期状態は「未採用」にするため、selectedIndicesはすべてfalseにする
             return {
                 photos: photos,
                 type: type,
                 controlNumber: '',
-                selectedIndices: photos.map((_, i) => i < maxSelected),
+                selectedIndices: photos.map(() => false),
                 isEmpty: false
             };
         }
@@ -755,9 +765,6 @@
                 }
                 return false;
             });
-            if (count === 0 && group.photos.length > 0) {
-                group.selectedIndices = group.photos.map((_, i) => i < max);
-            }
         }
 
         function movePhotoToPrevGroup(gIdx, pIdx) {
@@ -775,6 +782,7 @@
                 normalizeGroupSelections(groups[targetIdx]);
             } else {
                 groups.unshift(createGroupObj([photo]));
+                groups[0].selectedIndices[0] = true;
                 gIdx++;
             }
 
@@ -805,7 +813,9 @@
                 groups[targetIdx].selectedIndices.unshift(true);
                 normalizeGroupSelections(groups[targetIdx]);
             } else {
-                groups.push(createGroupObj([photo]));
+                const newG = createGroupObj([photo]);
+                newG.selectedIndices[0] = true;
+                groups.push(newG);
             }
 
             if (groups[gIdx].photos.length === 0) {
@@ -878,10 +888,7 @@
                                 ← 前の個体に戻る
                             </button>
                             <button id="step-goto-list-btn" type="button" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold text-sm shadow transition">
-                                📋 一覧表示で全体を確認する
-                            </button>
-                            <button id="step-print-btn" type="button" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-bold text-base shadow-md transition">
-                                🖨 写真帳を印刷・PDF出力
+                                📋 一覧表示で全体を確認・印刷する
                             </button>
                         </div>
                     </div>
@@ -894,7 +901,6 @@
                 document.getElementById('step-goto-list-btn').addEventListener('click', () => {
                     setViewMode('list');
                 });
-                document.getElementById('step-print-btn').addEventListener('click', () => window.print());
                 return;
             }
 
@@ -930,15 +936,16 @@
                 </div>
             `;
 
+            // ★「未分類」を除外し、3列3行（grid-cols-3）のグリッドでボタンを配置
             let typeButtonsHtml = '';
-            ANIMAL_TYPES.forEach(a => {
+            ANIMAL_TYPES.filter(a => a.id !== 'unclassified').forEach(a => {
                 const isActive = group.type === a.id;
                 const btnClass = isActive
                     ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-400'
                     : 'bg-white text-slate-700 hover:bg-slate-100 active:bg-emerald-100 border-2 border-slate-300';
                 typeButtonsHtml += `
                     <button type="button" data-step-type-btn="${a.id}" 
-                            class="py-3 px-2 rounded-xl text-sm sm:text-base font-bold transition text-center ${btnClass}">
+                            class="py-4 px-3 rounded-xl text-base sm:text-lg font-bold transition text-center shadow-sm ${btnClass}">
                         ${a.name}
                     </button>`;
             });
@@ -956,8 +963,8 @@
                             </span>
                         </div>
                         <div class="pt-2 border-t border-amber-200">
-                            <span class="block text-xs font-bold text-slate-600 mb-2">▼ 動物の種類をタップ（選択すると自動で次へ進みます）：</span>
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <span class="block text-xs sm:text-sm font-bold text-slate-600 mb-2">▼ 動物の種類をタップ（選択すると自動で次へ進みます）：</span>
+                            <div class="grid grid-cols-3 gap-2.5">
                                 ${typeButtonsHtml}
                             </div>
                         </div>
@@ -982,30 +989,31 @@
                         cardStyle = 'border-slate-200 bg-slate-100 opacity-75';
                     }
 
+                    // ★ 分割ボタンを「上段（写真移動ボタンの上）」に配置し、サイズも少し大きく改善
                     const splitBtnHtml = pIndex > 0
-                        ? `<button type="button" data-split-photo="${gIndex}-${pIndex}" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-2.5 py-1 rounded text-xs font-bold transition">✂ ここから別個体へ分割</button>`
+                        ? `<button type="button" data-split-photo="${gIndex}-${pIndex}" class="w-full bg-amber-100 hover:bg-amber-200 text-amber-900 border-2 border-amber-300 py-2 px-3 rounded-lg text-xs sm:text-sm font-bold transition mb-2 shadow-sm">✂ ここから別個体へ分割</button>`
                         : '';
 
                     photosHtml += `
-                        <div class="border-2 rounded-xl p-2.5 sm:p-3 flex flex-col justify-between transition ${cardStyle}">
+                        <div class="border-2 rounded-xl p-3 sm:p-4 flex flex-col justify-between transition ${cardStyle}">
+                            ${splitBtnHtml}
                             <div class="photo-click-area relative flex flex-col items-center cursor-pointer" data-group="${gIndex}" data-photo="${pIndex}" data-disabled="${isDisabled}">
-                                <div class="absolute top-2 left-2 z-10 px-2.5 py-1 rounded-lg shadow text-xs sm:text-sm font-bold flex items-center gap-1.5 ${isChecked ? 'bg-emerald-600 text-white' : 'bg-white/95 text-slate-700'}">
+                                <div class="absolute top-2 left-2 z-10 px-3 py-1.5 rounded-lg shadow text-xs sm:text-sm font-bold flex items-center gap-1.5 ${isChecked ? 'bg-emerald-600 text-white' : 'bg-white/95 text-slate-700'}">
                                     <span>${isChecked ? '✓ 採用中' : (isDisabled ? `上限(${maxAllowed}枚)済` : '未採用 (タップで選択)')}</span>
                                 </div>
-                                <img src="${p.url}" class="w-full h-60 sm:h-72 object-contain bg-slate-200/50 rounded-lg mb-1.5 pointer-events-none">
+                                <img src="${p.url}" class="w-full h-60 sm:h-72 object-contain bg-slate-200/50 rounded-lg mb-2 pointer-events-none">
                                 <div class="flex items-center justify-between w-full px-1 text-xs text-slate-500">
                                     <span class="truncate font-medium">${p.name}</span>
                                     <span class="shrink-0 ml-2">${p.dateTime.toLocaleTimeString()}</span>
                                 </div>
                             </div>
-                            <div class="pt-2 mt-1.5 border-t border-slate-200/80 flex flex-wrap items-center justify-center gap-1.5">
-                                <button type="button" data-photo-to-prev="${gIndex}-${pIndex}" class="bg-white hover:bg-sky-50 text-sky-700 border border-sky-300 px-2 py-1 rounded text-xs font-bold transition">
+                            <div class="pt-3 mt-2 border-t border-slate-200/80 flex items-center justify-center gap-2">
+                                <button type="button" data-photo-to-prev="${gIndex}-${pIndex}" class="flex-1 bg-white hover:bg-sky-50 text-sky-700 border border-sky-300 py-2 px-2 rounded-lg text-xs sm:text-sm font-bold transition shadow-sm">
                                     ↑ 前の個体へ
                                 </button>
-                                <button type="button" data-photo-to-next="${gIndex}-${pIndex}" class="bg-white hover:bg-sky-50 text-sky-700 border border-sky-300 px-2 py-1 rounded text-xs font-bold transition">
+                                <button type="button" data-photo-to-next="${gIndex}-${pIndex}" class="flex-1 bg-white hover:bg-sky-50 text-sky-700 border border-sky-300 py-2 px-2 rounded-lg text-xs sm:text-sm font-bold transition shadow-sm">
                                     ↓ 次の個体へ
                                 </button>
-                                ${splitBtnHtml}
                             </div>
                         </div>
                     `;
@@ -1031,7 +1039,8 @@
 
                         <div class="pt-3 border-t-2 border-slate-100">
                             <span class="block text-xs sm:text-sm font-bold text-slate-700 mb-2">▼ 動物の種類をタップ（選択すると自動で次へ進みます）：</span>
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <!-- 3列3行のグリッド配置 -->
+                            <div class="grid grid-cols-3 gap-2.5">
                                 ${typeButtonsHtml}
                             </div>
                         </div>
@@ -1597,3 +1606,4 @@
     </style>
 </body>
 </html>
+
