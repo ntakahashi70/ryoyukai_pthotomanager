@@ -10,35 +10,35 @@
     <script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.js"></script>
     <link rel="apple-touch-icon" href="images/icon.png">
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen p-6 pb-24">
+<body class="bg-slate-100 text-slate-800 min-h-screen p-3 sm:p-6 pb-24">
     <div class="max-w-5xl mx-auto">
         <!-- ヘッダー（右上にマニュアルボタン配置） -->
-        <header class="bg-white shadow rounded-xl p-6 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <header class="bg-white shadow rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div>
-                <h1 class="text-2xl font-bold text-slate-700">猟友会 らくらく写真帳</h1>
-                <p class="text-sm text-slate-500 mt-1">デジカメの写真をドロップするだけで、撮影日時をもとに個体ごとにグループ化し、写真帳レイアウトを作成します。</p>
+                <h1 class="text-xl sm:text-2xl font-bold text-slate-700">猟友会 らくらく写真帳</h1>
+                <p class="text-xs sm:text-sm text-slate-500 mt-1">デジカメの写真をドロップするだけで、撮影日時をもとに個体ごとにグループ化し、写真帳レイアウトを作成します。</p>
             </div>
-            <a href="manual.pdf" target="_blank" rel="noopener noreferrer" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm transition flex items-center gap-2 shrink-0 self-start sm:self-center">
-                <svg class="w-5 h-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+            <a href="manual.pdf" target="_blank" rel="noopener noreferrer" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-4 py-2 rounded-xl font-bold text-xs sm:text-sm shadow-sm transition flex items-center gap-2 shrink-0 self-start sm:self-center">
+                <svg class="w-4 h-4 sm:w-5 sm:h-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
                 操作マニュアルを開く
             </a>
         </header>
 
         <!-- アップロードエリア -->
-        <div id="drop-zone" class="bg-white border-2 border-dashed border-slate-300 rounded-xl p-8 text-center mb-4 hover:border-emerald-500 transition cursor-pointer">
-            <svg class="w-12 h-12 mx-auto text-slate-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-            <p class="text-lg font-medium text-slate-700">ここにデジカメの写真をドラッグ＆ドロップ</p>
-            <p class="text-sm text-slate-400 mt-1">または、クリックしてファイルを選択（複数選択可）</p>
+        <div id="drop-zone" class="bg-white border-2 border-dashed border-slate-300 rounded-xl p-6 sm:p-8 text-center mb-4 hover:border-emerald-500 transition cursor-pointer">
+            <svg class="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-slate-400 mb-2 sm:mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            <p class="text-base sm:text-lg font-medium text-slate-700">ここにデジカメの写真をドラッグ＆ドロップ</p>
+            <p class="text-xs sm:text-sm text-slate-400 mt-1">または、タップしてファイルを選択（複数選択可）</p>
             <input type="file" id="file-input" multiple accept="image/*" class="hidden">
         </div>
 
         <!-- アップロードエリアの下に「前回の作業ファイルを開く」ボタンを配置 -->
-        <div class="bg-white shadow rounded-xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 border border-slate-200">
+        <div class="bg-white shadow rounded-xl p-4 mb-4 sm:mb-6 flex flex-wrap items-center justify-between gap-3 border border-slate-200">
             <div>
-                <span class="text-sm font-bold text-slate-700">前回の続きから始める場合：</span>
-                <p class="text-xs text-slate-500 mt-0.5">※先に上のエリアへ写真ファイルをドロップしてから、保存ファイルを選んでください。</p>
+                <span class="text-xs sm:text-sm font-bold text-slate-700">前回の続きから始める場合：</span>
+                <p class="text-xs text-slate-500 mt-0.5">※先に上のエリアへ写真ファイルを読み込ませてから、保存ファイルを選んでください。</p>
             </div>
-            <label class="bg-slate-700 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold shadow transition flex items-center gap-2 text-sm cursor-pointer">
+            <label class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-xl font-bold shadow transition flex items-center gap-2 text-xs sm:text-sm cursor-pointer">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
                 前回の作業ファイル（.json）を開く
                 <input type="file" id="load-project-input" accept=".json" class="hidden">
@@ -46,32 +46,42 @@
         </div>
 
         <!-- コントロールバー -->
-        <div id="controls" class="hidden bg-white shadow rounded-xl p-5 mb-6 space-y-4">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div class="flex flex-wrap items-center gap-3">
+        <div id="controls" class="hidden bg-white shadow rounded-xl p-4 sm:p-5 mb-4 sm:mb-6 space-y-4">
+            <!-- 表示モード切り替えバー（スマホはデフォルトで「1件ずつ仕分け」、PCは「一覧表示」） -->
+            <div class="bg-slate-100 p-1.5 rounded-xl flex items-center gap-1.5 border border-slate-200">
+                <button id="mode-step-btn" type="button" class="flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5">
+                    <span>📱 1件ずつ仕分け</span>
+                </button>
+                <button id="mode-list-btn" type="button" class="flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5">
+                    <span>📋 一覧表示</span>
+                </button>
+            </div>
+
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3">
                     <div>
-                        <label class="text-sm font-bold text-slate-700 mr-2">グループ判定間隔:</label>
-                        <select id="time-threshold" class="border-2 border-slate-300 rounded-lg px-3 py-2 text-base bg-slate-50 font-medium">
+                        <label class="text-xs sm:text-sm font-bold text-slate-700 mr-1.5">グループ判定間隔:</label>
+                        <select id="time-threshold" class="border-2 border-slate-300 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 text-sm sm:text-base bg-slate-50 font-medium">
                             <option value="5">5分以内</option>
                             <option value="15" selected>15分以内</option>
                             <option value="30">30分以内</option>
                             <option value="60">60分以内</option>
                         </select>
                     </div>
-                    <button id="re-group-btn" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg text-base font-bold transition">再グループ化</button>
+                    <button id="re-group-btn" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm sm:text-base font-bold transition">再グループ化</button>
                 </div>
                 
                 <!-- 種類・番号設定ポップアップを開くボタン -->
-                <button id="open-settings-modal-btn" type="button" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-xl text-base font-bold shadow-md transition flex items-center justify-center gap-2 w-full md:w-auto">
+                <button id="open-settings-modal-btn" type="button" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl text-sm sm:text-base font-bold shadow-md transition flex items-center justify-center gap-2 w-full md:w-auto">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                     <span>駆除番号・開始番号の設定</span>
                 </button>
             </div>
 
-            <!-- 写真一覧フィルターバー -->
-            <div class="pt-3 border-t border-slate-200">
-                <span class="block text-xs font-bold text-slate-500 mb-2">▼ 表示するグループのフィルター：</span>
-                <div id="display-filter-buttons" class="flex flex-wrap gap-2">
+            <!-- 写真一覧フィルターバー（一覧モード時のみ表示） -->
+            <div id="filter-bar-wrapper" class="pt-3 border-t border-slate-200">
+                <span class="block text-xs font-bold text-slate-500 mb-2">▼ 表示する鳥獣のフィルター：</span>
+                <div id="display-filter-buttons" class="flex flex-wrap gap-1.5 sm:gap-2">
                     <!-- JSで動的生成 -->
                 </div>
             </div>
@@ -79,24 +89,27 @@
             <p class="text-xs text-slate-500">※Exif日時がない写真や誤ってまとまった写真は、各写真下のボタンや「写真なしの整理」で手動整理できます。</p>
         </div>
 
-        <!-- グループ一覧コンテナ -->
+        <!-- ① 1件ずつ仕分けモード（ステップビュー）コンテナ -->
+        <div id="step-view-container" class="hidden space-y-4"></div>
+
+        <!-- ② 一覧表示モードコンテナ -->
         <div id="groups-container" class="space-y-6"></div>
 
         <!-- 最下部に配置された一括アクションバー -->
-        <div id="bottom-action-bar" class="hidden mt-8 bg-white shadow-lg border-2 border-emerald-500 rounded-xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div id="bottom-action-bar" class="hidden mt-8 bg-white shadow-lg border-2 border-emerald-500 rounded-xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
                 <h3 class="text-base font-bold text-slate-700">お疲れ様でした！写真の選択・確認が終わったら</h3>
                 <p class="text-xs text-slate-500 mt-0.5">撮り忘れ（写真なし）の追加や、作業の保存・印刷がここから行えます。</p>
             </div>
-            <div class="flex flex-wrap items-center gap-3">
-                <button id="open-empty-modal-btn" class="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-bold shadow transition flex items-center gap-2 text-sm">
+            <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                <button id="open-empty-modal-btn" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-xl font-bold shadow transition flex items-center gap-2 text-xs sm:text-sm">
                     <span>＋ 写真なしの整理</span>
                 </button>
-                <button id="save-project-btn-bottom" class="bg-sky-600 hover:bg-sky-700 text-white px-5 py-2.5 rounded-xl font-bold shadow transition flex items-center gap-2 text-sm">
+                <button id="save-project-btn-bottom" class="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2.5 rounded-xl font-bold shadow transition flex items-center gap-2 text-xs sm:text-sm">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
                     作業を保存
                 </button>
-                <button id="print-btn-bottom" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-bold shadow transition flex items-center gap-2 text-base">
+                <button id="print-btn-bottom" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold shadow transition flex items-center gap-2 text-sm sm:text-base">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                     写真帳を印刷・PDF出力
                 </button>
@@ -104,16 +117,16 @@
         </div>
     </div>
 
-    <!-- 右下固定フローティングアクションバー（印刷ボタンを追加） -->
-    <div id="floating-action-bar" class="hidden fixed bottom-4 right-4 z-40 flex items-center gap-1.5 bg-white/95 backdrop-blur-sm p-2 rounded-xl shadow-2xl border-2 border-slate-200">
-        <button id="open-empty-modal-btn-float" type="button" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-lg font-bold shadow transition flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap">
-            <span>＋ 写真なし整理</span>
+    <!-- 右下固定フローティングアクションバー -->
+    <div id="floating-action-bar" class="hidden fixed bottom-3 right-3 sm:bottom-4 sm:right-4 z-40 flex items-center gap-1.5 bg-white/95 backdrop-blur-sm p-2 rounded-xl shadow-2xl border-2 border-slate-200">
+        <button id="open-empty-modal-btn-float" type="button" class="bg-amber-500 hover:bg-amber-600 text-white px-2.5 sm:px-3 py-2 rounded-lg font-bold shadow transition flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap">
+            <span>＋ 写真なし</span>
         </button>
-        <button id="save-project-btn-float" type="button" class="bg-sky-600 hover:bg-sky-700 text-white px-3 py-2 rounded-lg font-bold shadow transition flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap">
+        <button id="save-project-btn-float" type="button" class="bg-sky-600 hover:bg-sky-700 text-white px-2.5 sm:px-3 py-2 rounded-lg font-bold shadow transition flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
             <span>保存</span>
         </button>
-        <button id="print-btn-float" type="button" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg font-bold shadow transition flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap">
+        <button id="print-btn-float" type="button" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 sm:px-3 py-2 rounded-lg font-bold shadow transition flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
             <span>印刷</span>
         </button>
@@ -127,12 +140,12 @@
         <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
             <div class="bg-slate-800 text-white p-5 flex items-center justify-between">
                 <div>
-                    <h2 class="text-xl font-bold">駆除番号・開始番号の設定</h2>
+                    <h2 class="text-lg sm:text-xl font-bold">駆除番号・開始番号の設定</h2>
                     <p class="text-xs text-slate-300 mt-0.5">動物ごとの共通駆除番号のベースや、連番の開始番号を設定できます。</p>
                 </div>
                 <button id="close-settings-modal-btn" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition">閉じる</button>
             </div>
-            <div class="p-6 flex-1 overflow-y-auto">
+            <div class="p-5 sm:p-6 flex-1 overflow-y-auto">
                 <div id="start-settings-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <!-- JSで動的生成 -->
                 </div>
@@ -151,7 +164,7 @@
             <!-- モーダルヘッダー -->
             <div class="bg-slate-800 text-white p-5 flex items-center justify-between">
                 <div>
-                    <h2 class="text-xl font-bold">写真なしの整理（欠番・記録の追加）</h2>
+                    <h2 class="text-lg sm:text-xl font-bold">写真なしの整理（欠番・記録の追加）</h2>
                     <p class="text-xs text-slate-300 mt-0.5">写真を確認しながら、目的の場所のすぐ下に「写真なし」を追加したり並び替えができます。</p>
                 </div>
                 <button id="close-empty-modal-btn" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition">閉じる</button>
@@ -166,7 +179,7 @@
             </div>
 
             <!-- モーダル内：登録一覧 ＆ 追加エリア -->
-            <div class="p-6 flex-1 overflow-y-auto space-y-4">
+            <div class="p-5 sm:p-6 flex-1 overflow-y-auto space-y-4">
                 <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl">
                     <span id="current-filter-name" class="font-bold text-amber-900 text-base">【シカ】</span>
                     <p class="text-xs text-amber-700 mt-0.5">各行の「＋ 写真なし追加」ボタンから、お好きな位置に「写真なしの個体」を追加できます。</p>
@@ -208,6 +221,10 @@
         let groups = [];
         let activeModalFilterType = 'deer';
         let currentDisplayFilter = 'all';
+
+        let viewMode = window.innerWidth < 768 ? 'step' : 'list';
+        let currentStepIndex = 0;
+        let isStepCompleted = false;
         
         let startSettings = {
             unclassified: { num: 1, ctrl: '' },
@@ -226,9 +243,13 @@
         const bottomActionBar = document.getElementById('bottom-action-bar');
         const floatingActionBar = document.getElementById('floating-action-bar');
         const groupsContainer = document.getElementById('groups-container');
+        const stepViewContainer = document.getElementById('step-view-container');
+        const filterBarWrapper = document.getElementById('filter-bar-wrapper');
+        const modeStepBtn = document.getElementById('mode-step-btn');
+        const modeListBtn = document.getElementById('mode-list-btn');
         const reGroupBtn = document.getElementById('re-group-btn');
         const printBtnBottom = document.getElementById('print-btn-bottom');
-        const printBtnFloat = document.getElementById('print-btn-float'); // 追加
+        const printBtnFloat = document.getElementById('print-btn-float');
         const saveProjectBtnBottom = document.getElementById('save-project-btn-bottom');
         const saveProjectBtnFloat = document.getElementById('save-project-btn-float');
         const scrollTopBtn = document.getElementById('scroll-top-btn');
@@ -253,6 +274,40 @@
         const lightboxModal = document.getElementById('image-lightbox-modal');
         const lightboxImg = document.getElementById('lightbox-img');
         const lightboxCaption = document.getElementById('lightbox-caption');
+
+        function setViewMode(mode) {
+            viewMode = mode;
+            isStepCompleted = false;
+            renderCurrentView();
+        }
+
+        modeStepBtn.addEventListener('click', () => setViewMode('step'));
+        modeListBtn.addEventListener('click', () => setViewMode('list'));
+
+        function updateModeButtonsUI() {
+            if (viewMode === 'step') {
+                modeStepBtn.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 bg-emerald-600 text-white shadow';
+                modeListBtn.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 text-slate-600 hover:bg-white/60';
+                filterBarWrapper.classList.add('hidden');
+            } else {
+                modeListBtn.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 bg-emerald-600 text-white shadow';
+                modeStepBtn.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 text-slate-600 hover:bg-white/60';
+                filterBarWrapper.classList.remove('hidden');
+            }
+        }
+
+        function renderCurrentView() {
+            updateModeButtonsUI();
+            if (viewMode === 'step') {
+                groupsContainer.classList.add('hidden');
+                stepViewContainer.classList.remove('hidden');
+                renderStepView();
+            } else {
+                stepViewContainer.classList.add('hidden');
+                groupsContainer.classList.remove('hidden');
+                renderGroups();
+            }
+        }
 
         function renderStartSettings() {
             startSettingsContainer.innerHTML = '';
@@ -284,7 +339,7 @@
                         startSettings[type].ctrl = e.target.value;
                     }
                     updateGroupNumbersAndControlNums();
-                    renderGroups();
+                    renderCurrentView();
                 });
             });
         }
@@ -298,7 +353,7 @@
         });
         applySettingsModalBtn.addEventListener('click', () => {
             settingsModal.classList.add('hidden');
-            renderGroups();
+            renderCurrentView();
         });
 
         dropZone.addEventListener('click', () => fileInput.click());
@@ -321,7 +376,6 @@
             if (rawPhotos.length > 0) buildGroups();
         });
 
-        // 印刷ボタンのイベントリスナー（下部・右下共通）
         const triggerPrint = () => window.print();
         printBtnBottom.addEventListener('click', triggerPrint);
         printBtnFloat.addEventListener('click', triggerPrint);
@@ -340,7 +394,7 @@
 
         closeEmptyModalBtn.addEventListener('click', () => {
             modal.classList.add('hidden');
-            renderGroups();
+            renderCurrentView();
         });
 
         lightboxModal.addEventListener('click', () => {
@@ -559,12 +613,14 @@
                         };
                     });
 
+                    currentStepIndex = 0;
+                    isStepCompleted = false;
                     controls.classList.remove('hidden');
                     bottomActionBar.classList.remove('hidden');
                     floatingActionBar.classList.remove('hidden');
                     renderStartSettings();
                     updateGroupNumbersAndControlNums();
-                    renderGroups();
+                    renderCurrentView();
                     alert('作業データを正常に読み込みました！');
                 } catch (err) {
                     console.error(err);
@@ -584,7 +640,7 @@
                 return;
             }
 
-            dropZone.innerHTML = `<p class="text-lg font-medium text-emerald-600">Exif情報を解析中 (${fileArray.length}枚)...</p>`;
+            dropZone.innerHTML = `<p class="text-base sm:text-lg font-medium text-emerald-600">Exif情報を解析中 (${fileArray.length}枚)...</p>`;
 
             for (let file of fileArray) {
                 let dateTime = null;
@@ -612,9 +668,9 @@
             rawPhotos.sort((a, b) => a.dateTime - b.dateTime);
 
             dropZone.innerHTML = `
-                <svg class="w-12 h-12 mx-auto text-emerald-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                <p class="text-lg font-medium text-slate-700">${rawPhotos.length}枚の写真を読み込みました</p>
-                <p class="text-sm text-slate-400 mt-1">追加でドロップするか、下のグループを確認してください</p>
+                <svg class="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-emerald-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                <p class="text-base sm:text-lg font-medium text-slate-700">${rawPhotos.length}枚の写真を読み込みました</p>
+                <p class="text-xs sm:text-sm text-slate-400 mt-1">追加でドロップするか、下の写真を確認してください</p>
             `;
             controls.classList.remove('hidden');
             bottomActionBar.classList.remove('hidden');
@@ -650,8 +706,10 @@
                 groups.push(createGroupObj(currentGroup));
             }
 
+            currentStepIndex = 0;
+            isStepCompleted = false;
             updateGroupNumbersAndControlNums();
-            renderGroups();
+            renderCurrentView();
         }
 
         function createGroupObj(photos) {
@@ -726,8 +784,11 @@
                 normalizeGroupSelections(groups[gIdx]);
             }
 
+            if (currentStepIndex >= groups.length) {
+                currentStepIndex = Math.max(0, groups.length - 1);
+            }
             updateGroupNumbersAndControlNums();
-            renderGroups();
+            renderCurrentView();
         }
 
         function movePhotoToNextGroup(gIdx, pIdx) {
@@ -753,8 +814,11 @@
                 normalizeGroupSelections(groups[gIdx]);
             }
 
+            if (currentStepIndex >= groups.length) {
+                currentStepIndex = Math.max(0, groups.length - 1);
+            }
             updateGroupNumbersAndControlNums();
-            renderGroups();
+            renderCurrentView();
         }
 
         function splitGroupAtPhoto(gIdx, pIdx) {
@@ -770,9 +834,316 @@
             groups.splice(gIdx + 1, 0, newGroup);
 
             updateGroupNumbersAndControlNums();
-            renderGroups();
+            renderCurrentView();
         }
 
+        // ============================================================
+        // ① 1件ずつ仕分けモード（ステップビュー）描画ロジック
+        // ============================================================
+        function renderStepView() {
+            stepViewContainer.innerHTML = '';
+
+            if (groups.length === 0) {
+                stepViewContainer.innerHTML = '<p class="text-center text-slate-400 py-8">まずは上のエリアから写真を読み込んでください</p>';
+                return;
+            }
+
+            if (currentStepIndex >= groups.length) {
+                currentStepIndex = groups.length - 1;
+            }
+            if (currentStepIndex < 0) {
+                currentStepIndex = 0;
+            }
+
+            const unclassifiedCount = groups.filter(g => g.type === 'unclassified').length;
+            const classifiedCount = groups.length - unclassifiedCount;
+            const progressPercent = Math.round((classifiedCount / groups.length) * 100);
+
+            // 最後のグループを分類し終えた時の完了画面
+            if (isStepCompleted) {
+                stepViewContainer.innerHTML = `
+                    <div class="bg-white shadow-lg border-2 border-emerald-500 rounded-2xl p-6 sm:p-8 text-center space-y-5">
+                        <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+                            <svg class="w-9 h-9" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                        </div>
+                        <div>
+                            <h2 class="text-xl sm:text-2xl font-bold text-slate-800">最後の個体まで確認しました！</h2>
+                            <p class="text-sm text-slate-500 mt-1">
+                                分類済み: <span class="font-bold text-emerald-600">${classifiedCount}</span> / ${groups.length}件
+                                ${unclassifiedCount > 0 ? `<span class="text-amber-600 font-bold ml-2">（未分類が ${unclassifiedCount}件 残っています）</span>` : ''}
+                            </p>
+                        </div>
+                        <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                            <button id="step-back-from-complete-btn" type="button" class="w-full sm:w-auto bg-slate-200 hover:bg-slate-300 text-slate-700 px-5 py-3 rounded-xl font-bold text-sm transition">
+                                ← 前の個体に戻る
+                            </button>
+                            <button id="step-goto-list-btn" type="button" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold text-sm shadow transition">
+                                📋 一覧表示で全体を確認する
+                            </button>
+                            <button id="step-print-btn" type="button" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-bold text-base shadow-md transition">
+                                🖨 写真帳を印刷・PDF出力
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('step-back-from-complete-btn').addEventListener('click', () => {
+                    isStepCompleted = false;
+                    renderStepView();
+                });
+                document.getElementById('step-goto-list-btn').addEventListener('click', () => {
+                    setViewMode('list');
+                });
+                document.getElementById('step-print-btn').addEventListener('click', () => window.print());
+                return;
+            }
+
+            const gIndex = currentStepIndex;
+            const group = groups[gIndex];
+            const animalConfig = ANIMAL_TYPES.find(a => a.id === group.type);
+
+            // 進捗＆ナビゲーションバー
+            const navHtml = `
+                <div class="bg-white shadow rounded-xl p-3.5 sm:p-4 border border-slate-200 space-y-2.5">
+                    <div class="flex items-center justify-between gap-2">
+                        <button type="button" id="step-prev-btn" ${gIndex === 0 ? 'disabled' : ''} class="bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-slate-700 border border-slate-300 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition">
+                            ← 前へ
+                        </button>
+                        <div class="text-center">
+                            <span class="text-base sm:text-lg font-bold text-slate-800">${gIndex + 1} / ${groups.length} 件目</span>
+                            <span class="block text-[11px] sm:text-xs text-slate-500">分類済: ${classifiedCount}件 ／ 未分類: ${unclassifiedCount}件</span>
+                        </div>
+                        <button type="button" id="step-next-btn" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition">
+                            ${gIndex === groups.length - 1 ? '完了へ →' : '次へ →'}
+                        </button>
+                    </div>
+                    <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                        <div class="bg-emerald-500 h-full transition-all duration-300" style="width: ${progressPercent}%"></div>
+                    </div>
+                    ${unclassifiedCount > 0 && group.type !== 'unclassified' ? `
+                        <div class="text-center pt-0.5">
+                            <button type="button" id="step-jump-unclassified-btn" class="text-xs font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 px-3 py-1 rounded-full transition">
+                                ⚡ 次の「未分類」へスキップ（残り${unclassifiedCount}件）
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            let typeButtonsHtml = '';
+            ANIMAL_TYPES.forEach(a => {
+                const isActive = group.type === a.id;
+                const btnClass = isActive
+                    ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-400'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 active:bg-emerald-100 border-2 border-slate-300';
+                typeButtonsHtml += `
+                    <button type="button" data-step-type-btn="${a.id}" 
+                            class="py-3 px-2 rounded-xl text-sm sm:text-base font-bold transition text-center ${btnClass}">
+                        ${a.name}
+                    </button>`;
+            });
+
+            let cardBodyHtml = '';
+            if (group.isEmpty) {
+                cardBodyHtml = `
+                    <div class="bg-amber-50/80 shadow rounded-2xl p-4 sm:p-6 border-2 border-amber-300 space-y-4">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="bg-amber-500 text-white font-bold px-3.5 py-1.5 rounded-lg text-base sm:text-lg">
+                                ${animalConfig.name} No.${group.serialNumber}（写真なし）
+                            </span>
+                            <span class="text-xs font-bold text-amber-800 bg-amber-100 px-2.5 py-1 rounded-lg">
+                                ※ 欠番・写真なし枠
+                            </span>
+                        </div>
+                        <div class="pt-2 border-t border-amber-200">
+                            <span class="block text-xs font-bold text-slate-600 mb-2">▼ 動物の種類をタップ（選択すると自動で次へ進みます）：</span>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                ${typeButtonsHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                const dateStr = group.photos[0].dateTime.toLocaleString('jp-JP');
+                const selectedCount = group.selectedIndices.filter(Boolean).length;
+                const maxAllowed = animalConfig.max;
+                const isMaxReached = selectedCount >= maxAllowed;
+
+                let photosHtml = '';
+                group.photos.forEach((p, pIndex) => {
+                    const isChecked = group.selectedIndices[pIndex];
+                    const isDisabled = !isChecked && isMaxReached;
+
+                    let cardStyle = 'border-slate-200 bg-slate-50';
+                    if (isChecked) {
+                        cardStyle = 'border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-400';
+                    }
+                    if (isDisabled) {
+                        cardStyle = 'border-slate-200 bg-slate-100 opacity-75';
+                    }
+
+                    const splitBtnHtml = pIndex > 0
+                        ? `<button type="button" data-split-photo="${gIndex}-${pIndex}" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-2.5 py-1 rounded text-xs font-bold transition">✂ ここから別個体へ分割</button>`
+                        : '';
+
+                    photosHtml += `
+                        <div class="border-2 rounded-xl p-2.5 sm:p-3 flex flex-col justify-between transition ${cardStyle}">
+                            <div class="photo-click-area relative flex flex-col items-center cursor-pointer" data-group="${gIndex}" data-photo="${pIndex}" data-disabled="${isDisabled}">
+                                <div class="absolute top-2 left-2 z-10 px-2.5 py-1 rounded-lg shadow text-xs sm:text-sm font-bold flex items-center gap-1.5 ${isChecked ? 'bg-emerald-600 text-white' : 'bg-white/95 text-slate-700'}">
+                                    <span>${isChecked ? '✓ 採用中' : (isDisabled ? `上限(${maxAllowed}枚)済` : '未採用 (タップで選択)')}</span>
+                                </div>
+                                <img src="${p.url}" class="w-full h-60 sm:h-72 object-contain bg-slate-200/50 rounded-lg mb-1.5 pointer-events-none">
+                                <div class="flex items-center justify-between w-full px-1 text-xs text-slate-500">
+                                    <span class="truncate font-medium">${p.name}</span>
+                                    <span class="shrink-0 ml-2">${p.dateTime.toLocaleTimeString()}</span>
+                                </div>
+                            </div>
+                            <div class="pt-2 mt-1.5 border-t border-slate-200/80 flex flex-wrap items-center justify-center gap-1.5">
+                                <button type="button" data-photo-to-prev="${gIndex}-${pIndex}" class="bg-white hover:bg-sky-50 text-sky-700 border border-sky-300 px-2 py-1 rounded text-xs font-bold transition">
+                                    ↑ 前の個体へ
+                                </button>
+                                <button type="button" data-photo-to-next="${gIndex}-${pIndex}" class="bg-white hover:bg-sky-50 text-sky-700 border border-sky-300 px-2 py-1 rounded text-xs font-bold transition">
+                                    ↓ 次の個体へ
+                                </button>
+                                ${splitBtnHtml}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                cardBodyHtml = `
+                    <div class="bg-white shadow-md rounded-2xl p-4 sm:p-6 border border-slate-200 space-y-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-200">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-lg text-base sm:text-lg">
+                                    ${animalConfig.name} No.${group.serialNumber}
+                                </span>
+                                <span class="text-xs sm:text-sm font-bold px-2.5 py-1 rounded-lg bg-slate-200 text-slate-700">
+                                    採用: ${selectedCount}/${maxAllowed}枚
+                                </span>
+                            </div>
+                            <span class="text-xs text-slate-500 font-medium">${dateStr}</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
+                            ${photosHtml}
+                        </div>
+
+                        <div class="pt-3 border-t-2 border-slate-100">
+                            <span class="block text-xs sm:text-sm font-bold text-slate-700 mb-2">▼ 動物の種類をタップ（選択すると自動で次へ進みます）：</span>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                ${typeButtonsHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            stepViewContainer.innerHTML = navHtml + cardBodyHtml;
+
+            document.getElementById('step-prev-btn').addEventListener('click', () => {
+                if (currentStepIndex > 0) {
+                    currentStepIndex--;
+                    renderStepView();
+                }
+            });
+
+            document.getElementById('step-next-btn').addEventListener('click', () => {
+                if (currentStepIndex < groups.length - 1) {
+                    currentStepIndex++;
+                } else {
+                    isStepCompleted = true;
+                }
+                renderStepView();
+            });
+
+            const jumpBtn = document.getElementById('step-jump-unclassified-btn');
+            if (jumpBtn) {
+                jumpBtn.addEventListener('click', () => {
+                    const nextIdx = groups.findIndex((g, idx) => idx > currentStepIndex && g.type === 'unclassified');
+                    if (nextIdx !== -1) {
+                        currentStepIndex = nextIdx;
+                    } else {
+                        const firstIdx = groups.findIndex(g => g.type === 'unclassified');
+                        if (firstIdx !== -1) currentStepIndex = firstIdx;
+                    }
+                    renderStepView();
+                });
+            }
+
+            stepViewContainer.querySelectorAll('[data-step-type-btn]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const newType = e.currentTarget.dataset.stepTypeBtn;
+                    groups[gIndex].type = newType;
+                    if (!groups[gIndex].isEmpty) {
+                        const cfg = ANIMAL_TYPES.find(a => a.id === newType);
+                        const max = cfg.max;
+                        groups[gIndex].selectedIndices = groups[gIndex].photos.map((_, i) => i < max);
+                    }
+                    updateGroupNumbersAndControlNums();
+
+                    if (currentStepIndex < groups.length - 1) {
+                        currentStepIndex++;
+                    } else {
+                        isStepCompleted = true;
+                    }
+                    renderStepView();
+                });
+            });
+
+            bindPhotoCardEvents(stepViewContainer);
+        }
+
+        function bindPhotoCardEvents(container) {
+            container.querySelectorAll('.photo-click-area').forEach(area => {
+                area.addEventListener('click', () => {
+                    const isDisabled = area.dataset.disabled === 'true';
+                    if (isDisabled) return;
+
+                    const gIdx = parseInt(area.dataset.group);
+                    const pIdx = parseInt(area.dataset.photo);
+                    const currentState = groups[gIdx].selectedIndices[pIdx];
+                    
+                    const animalConfig = ANIMAL_TYPES.find(a => a.id === groups[gIdx].type);
+                    const currentSelectedCount = groups[gIdx].selectedIndices.filter(Boolean).length;
+
+                    if (!currentState && currentSelectedCount >= animalConfig.max) {
+                        return;
+                    }
+
+                    groups[gIdx].selectedIndices[pIdx] = !currentState;
+                    renderCurrentView();
+                });
+            });
+
+            container.querySelectorAll('[data-photo-to-prev]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const [gIdx, pIdx] = e.currentTarget.dataset.photoToPrev.split('-').map(Number);
+                    movePhotoToPrevGroup(gIdx, pIdx);
+                });
+            });
+
+            container.querySelectorAll('[data-photo-to-next]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const [gIdx, pIdx] = e.currentTarget.dataset.photoToNext.split('-').map(Number);
+                    movePhotoToNextGroup(gIdx, pIdx);
+                });
+            });
+
+            container.querySelectorAll('[data-split-photo]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const [gIdx, pIdx] = e.currentTarget.dataset.splitPhoto.split('-').map(Number);
+                    splitGroupAtPhoto(gIdx, pIdx);
+                });
+            });
+        }
+
+        // ============================================================
+        // ② 一覧表示モード描画ロジック
+        // ============================================================
         function renderDisplayFilterButtons() {
             displayFilterButtons.innerHTML = '';
             
@@ -815,7 +1186,7 @@
             });
 
             if (filteredGroups.length === 0) {
-                groupsContainer.innerHTML = '<p class="text-center text-slate-400 py-6">該当するグループはありません</p>';
+                groupsContainer.innerHTML = '<p class="text-center text-slate-400 py-6">該当する個体はありません</p>';
                 return;
             }
 
@@ -826,16 +1197,16 @@
                 
                 const card = document.createElement('div');
                 card.className = group.isEmpty
-                    ? 'bg-amber-50/70 shadow rounded-xl p-6 border-2 border-amber-300'
-                    : 'bg-white shadow rounded-xl p-6 border border-slate-200';
+                    ? 'bg-amber-50/70 shadow rounded-xl p-5 sm:p-6 border-2 border-amber-300'
+                    : 'bg-white shadow rounded-xl p-5 sm:p-6 border border-slate-200';
                 
                 const moveControlsHtml = `
                     <div class="flex items-center gap-1.5 ml-auto">
                         <button type="button" data-move-up="${gIndex}" ${gIndex === 0 ? 'disabled' : ''} class="bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-slate-700 border px-2.5 py-1 rounded-lg text-xs font-bold transition">
-                            ↑ グループ上へ
+                            ↑ 上の個体へ
                         </button>
                         <button type="button" data-move-down="${gIndex}" ${gIndex === groups.length - 1 ? 'disabled' : ''} class="bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-slate-700 border px-2.5 py-1 rounded-lg text-xs font-bold transition">
-                            ↓ グループ下へ
+                            ↓ 下の個体へ
                         </button>
                     </div>
                 `;
@@ -848,7 +1219,7 @@
                         : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300';
                     typeButtonsHtml += `
                         <button type="button" data-group-type-btn="${gIndex}" data-type="${a.id}" 
-                                class="py-2.5 px-2 rounded-xl text-base font-bold transition text-center ${btnClass}">
+                                class="py-2.5 px-2 rounded-xl text-sm sm:text-base font-bold transition text-center ${btnClass}">
                             ${a.name}
                         </button>`;
                 });
@@ -896,7 +1267,7 @@
                         }
 
                         const splitBtnHtml = pIndex > 0
-                            ? `<button type="button" data-split-photo="${gIndex}-${pIndex}" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-2.5 py-1 rounded text-xs font-bold transition" title="この写真とそれ以降を切り離して新しいグループにします">✂ ここから別個体へ分割</button>`
+                            ? `<button type="button" data-split-photo="${gIndex}-${pIndex}" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-2.5 py-1 rounded text-xs font-bold transition" title="この写真とそれ以降を切り離して別の個体にします">✂ ここから別個体へ分割</button>`
                             : '';
 
                         photosHtml += `
@@ -911,11 +1282,11 @@
                                 </div>
                                 
                                 <div class="pt-2 border-t border-slate-200/80 flex flex-wrap items-center justify-center gap-1.5">
-                                    <button type="button" data-photo-to-prev="${gIndex}-${pIndex}" class="bg-white hover:bg-sky-50 text-sky-700 border border-sky-300 px-2.5 py-1 rounded text-xs font-bold transition" title="この写真1枚を上のグループへ移動します">
-                                        ↑ 上のグループへ
+                                    <button type="button" data-photo-to-prev="${gIndex}-${pIndex}" class="bg-white hover:bg-sky-50 text-sky-700 border border-sky-300 px-2.5 py-1 rounded text-xs font-bold transition" title="この写真1枚を上の個体へ移動します">
+                                        ↑ 上の個体へ
                                     </button>
-                                    <button type="button" data-photo-to-next="${gIndex}-${pIndex}" class="bg-white hover:bg-sky-50 text-sky-700 border border-sky-300 px-2.5 py-1 rounded text-xs font-bold transition" title="この写真1枚を下のグループへ移動します">
-                                        ↓ 下のグループへ
+                                    <button type="button" data-photo-to-next="${gIndex}-${pIndex}" class="bg-white hover:bg-sky-50 text-sky-700 border border-sky-300 px-2.5 py-1 rounded text-xs font-bold transition" title="この写真1枚を下の個体へ移動します">
+                                        ↓ 下の個体へ
                                     </button>
                                     ${splitBtnHtml}
                                 </div>
@@ -952,52 +1323,9 @@
                 groupsContainer.appendChild(card);
             });
 
-            document.querySelectorAll('.photo-click-area').forEach(area => {
-                area.addEventListener('click', () => {
-                    const isDisabled = area.dataset.disabled === 'true';
-                    if (isDisabled) return;
+            bindPhotoCardEvents(groupsContainer);
 
-                    const gIdx = parseInt(area.dataset.group);
-                    const pIdx = parseInt(area.dataset.photo);
-                    const currentState = groups[gIdx].selectedIndices[pIdx];
-                    
-                    const animalConfig = ANIMAL_TYPES.find(a => a.id === groups[gIdx].type);
-                    const currentSelectedCount = groups[gIdx].selectedIndices.filter(Boolean).length;
-
-                    if (!currentState && currentSelectedCount >= animalConfig.max) {
-                        return;
-                    }
-
-                    groups[gIdx].selectedIndices[pIdx] = !currentState;
-                    renderGroups();
-                });
-            });
-
-            document.querySelectorAll('[data-photo-to-prev]').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const [gIdx, pIdx] = e.target.dataset.photoToPrev.split('-').map(Number);
-                    movePhotoToPrevGroup(gIdx, pIdx);
-                });
-            });
-
-            document.querySelectorAll('[data-photo-to-next]').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const [gIdx, pIdx] = e.target.dataset.photoToNext.split('-').map(Number);
-                    movePhotoToNextGroup(gIdx, pIdx);
-                });
-            });
-
-            document.querySelectorAll('[data-split-photo]').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const [gIdx, pIdx] = e.target.dataset.splitPhoto.split('-').map(Number);
-                    splitGroupAtPhoto(gIdx, pIdx);
-                });
-            });
-
-            document.querySelectorAll('[data-group-type-btn]').forEach(btn => {
+            groupsContainer.querySelectorAll('[data-group-type-btn]').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const gIdx = parseInt(e.target.dataset.groupTypeBtn);
                     const newType = e.target.dataset.type;
@@ -1012,7 +1340,7 @@
                 });
             });
 
-            document.querySelectorAll('[data-move-up]').forEach(btn => {
+            groupsContainer.querySelectorAll('[data-move-up]').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const gIdx = parseInt(e.target.dataset.moveUp);
                     if (gIdx > 0) {
@@ -1025,7 +1353,7 @@
                 });
             });
 
-            document.querySelectorAll('[data-move-down]').forEach(btn => {
+            groupsContainer.querySelectorAll('[data-move-down]').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const gIdx = parseInt(e.target.dataset.moveDown);
                     if (gIdx < groups.length - 1) {
@@ -1157,7 +1485,7 @@
                 background: white !important;
                 color: black !important;
             }
-            header, #drop-zone, #controls, #groups-container, #bottom-action-bar, #floating-action-bar, .bg-white.shadow.rounded-xl.p-4.mb-6.flex {
+            header, #drop-zone, #controls, #step-view-container, #groups-container, #bottom-action-bar, #floating-action-bar, .bg-white.shadow.rounded-xl.p-4.mb-4.flex, .bg-white.shadow.rounded-xl.p-4.mb-6.flex {
                 display: none !important;
             }
             .print-page {
