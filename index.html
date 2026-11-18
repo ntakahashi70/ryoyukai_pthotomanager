@@ -952,32 +952,38 @@
             renderCurrentView();
         }
 
-        function movePhotoToAdjacentGroup(gIdx, pIdx, direction) {
-            const targetGroupIdx = direction === 'prev' ? gIdx - 1 : gIdx + 1;
-            if (targetGroupIdx < 0 || targetGroupIdx >= groups.length) return;
+        function movePhotoToGroup(gIdx, pIdx, targetGroupIdx) {
+            if (targetGroupIdx === null || targetGroupIdx === undefined || targetGroupIdx < 0 || targetGroupIdx >= groups.length || targetGroupIdx === gIdx) return;
 
             const photo = groups[gIdx].photos.splice(pIdx, 1)[0];
             const selected = groups[gIdx].selectedIndices.splice(pIdx, 1)[0];
 
-            if (groups[targetGroupIdx].isEmpty) {
-                groups[targetGroupIdx].isEmpty = false;
-                groups[targetGroupIdx].photos = [photo];
-                groups[targetGroupIdx].selectedIndices = [selected];
+            const targetGroup = groups[targetGroupIdx];
+            if (targetGroup.isEmpty) {
+                targetGroup.isEmpty = false;
+                targetGroup.photos = [photo];
+                targetGroup.selectedIndices = [selected];
             } else {
-                if (direction === 'prev') {
-                    groups[targetGroupIdx].photos.push(photo);
-                    groups[targetGroupIdx].selectedIndices.push(selected);
-                } else {
-                    groups[targetGroupIdx].photos.unshift(photo);
-                    groups[targetGroupIdx].selectedIndices.unshift(selected);
-                }
-                normalizeGroupSelections(groups[targetGroupIdx]);
+                const combined = targetGroup.photos.map((p, i) => ({
+                    photo: p,
+                    selected: targetGroup.selectedIndices[i]
+                }));
+                combined.push({ photo, selected });
+                combined.sort((a, b) => new Date(a.photo.dateTime) - new Date(b.photo.dateTime));
+                targetGroup.photos = combined.map(item => item.photo);
+                targetGroup.selectedIndices = combined.map(item => item.selected);
+                normalizeGroupSelections(targetGroup);
             }
 
             if (groups[gIdx].photos.length === 0 && !groups[gIdx].isEmpty) groups.splice(gIdx, 1);
 
             updateGroupNumbersAndControlNums();
             renderCurrentView();
+        }
+
+        function movePhotoToAdjacentGroup(gIdx, pIdx, direction) {
+            const targetGroupIdx = direction === 'prev' ? gIdx - 1 : gIdx + 1;
+            movePhotoToGroup(gIdx, pIdx, targetGroupIdx);
         }
 
         function renderStepView() {
@@ -1045,7 +1051,7 @@
                             const isChecked = group.selectedIndices[pIndex];
                             const editedBadge = p.isEdited ? `<span class="bg-indigo-600 text-white text-[11px] font-bold px-2 py-0.5 rounded shadow">加工済</span>` : '';
                             const splitBetweenBtn = pIndex > 0 ? `
-                                <div class="my-2 sm:hidden col-span-full">
+                                <div class="mb-2">
                                     <button type="button" data-split-point="${gIndex}-${pIndex}" class="w-full bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
                                         ✂ ここから別の個体へ分割
                                     </button>
@@ -1053,16 +1059,18 @@
                             ` : '';
 
                             return `
-                                ${splitBetweenBtn}
                                 <div class="border-2 rounded-xl p-3 flex flex-col justify-between ${isChecked ? 'border-emerald-500 bg-emerald-50/40' : 'border-slate-200'}">
-                                    <div class="photo-click-area relative flex flex-col items-center cursor-pointer" data-group="${gIndex}" data-photo="${pIndex}">
-                                        <div class="absolute top-2 left-2 z-10 flex items-center gap-1.5">
-                                            <div class="px-3 py-1 rounded shadow text-xs font-bold ${isChecked ? 'bg-emerald-600 text-white' : 'bg-white'}">${isChecked ? '✓ 採用中' : '未採用'}</div>
-                                            ${editedBadge}
-                                        </div>
-                                        <button type="button" data-edit-photo="${gIndex}-${pIndex}" class="absolute top-2 right-2 z-10 bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded shadow text-xs font-bold">✎ 加工</button>
-                                        <img src="${p.url}" class="w-full h-60 object-contain bg-slate-200 rounded-lg mb-2 pointer-events-none">
-                                        <span class="text-xs text-slate-500">${p.name}</span>
+                                    <div>
+                                        ${splitBetweenBtn}
+                                        <div class="photo-click-area relative flex flex-col items-center cursor-pointer" data-group="${gIndex}" data-photo="${pIndex}">
+                                            <div class="absolute top-2 left-2 z-10 flex items-center gap-1.5">
+                                                <div class="px-3 py-1 rounded shadow text-xs font-bold ${isChecked ? 'bg-emerald-600 text-white' : 'bg-white'}">${isChecked ? '✓ 採用中' : '未採用'}</div>
+                                                ${editedBadge}
+                                            </div>
+                                            <button type="button" data-edit-photo="${gIndex}-${pIndex}" class="absolute top-2 right-2 z-10 bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded shadow text-xs font-bold">✎ 加工</button>
+                                            <img src="${p.url}" class="w-full h-60 object-contain bg-slate-200 rounded-lg mb-2 pointer-events-none">
+                                            <span class="text-xs text-slate-500">${p.name}</span>
+                                    </div>
                                     </div>
                                 </div>
                             `;
@@ -1092,10 +1100,7 @@
             stepViewContainer.querySelectorAll('[data-step-type-btn]').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     groups[gIndex].type = e.currentTarget.dataset.stepTypeBtn;
-                    if (!groups[gIndex].isEmpty) {
-                        const max = ANIMAL_TYPES.find(a => a.id === groups[gIndex].type).max;
-                        groups[gIndex].selectedIndices = groups[gIndex].photos.map((_, i) => i < max);
-                    }
+                    normalizeGroupSelections(groups[gIndex]);
                     updateGroupNumbersAndControlNums();
                     if (currentStepIndex < groups.length - 1) currentStepIndex++;
                     else isStepCompleted = true;
@@ -1137,6 +1142,18 @@
                     splitGroupAtPhoto(gIdx, pIdx);
                 });
             });
+
+            container.querySelectorAll('[data-move-photo]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (e.currentTarget.disabled) return;
+                    const [gIdx, pIdx] = e.currentTarget.dataset.movePhoto.split('-').map(Number);
+                    const targetGroupIdx = parseInt(e.currentTarget.dataset.targetGroup, 10);
+                    if (!isNaN(targetGroupIdx)) {
+                        movePhotoToGroup(gIdx, pIdx, targetGroupIdx);
+                    }
+                });
+            });
         }
 
         function renderDisplayFilterButtons() {
@@ -1159,9 +1176,11 @@
 
             if (filtered.length === 0) { groupsContainer.innerHTML = '<p class="text-center text-slate-400 py-6">該当する個体はありません</p>'; return; }
 
-            filtered.forEach(item => {
+            filtered.forEach((item, fIndex) => {
                 const group = item.group;
                 const gIndex = item.index;
+                const prevTargetIdx = fIndex > 0 ? filtered[fIndex - 1].index : null;
+                const nextTargetIdx = fIndex < filtered.length - 1 ? filtered[fIndex + 1].index : null;
                 const animalConfig = ANIMAL_TYPES.find(a => a.id === group.type);
                 const card = document.createElement('div');
                 card.className = group.isEmpty ? 'bg-amber-50/70 shadow rounded-xl p-5 border-2 border-amber-300' : 'bg-white shadow rounded-xl p-5 border';
@@ -1210,6 +1229,10 @@
                                             <span class="text-xs text-slate-500">${p.name}</span>
                                         </div>
                                     </div>
+                                    <div class="grid grid-cols-2 gap-2 mt-3 pt-2 border-t border-slate-200">
+                                        <button type="button" data-move-photo="${gIndex}-${pIndex}" data-target-group="${prevTargetIdx !== null ? prevTargetIdx : ''}" ${prevTargetIdx === null ? 'disabled' : ''} class="py-1.5 px-2 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1 ${prevTargetIdx === null ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-sky-50 hover:bg-sky-100 text-sky-800 border-sky-200'}">↑ 上の個体へ</button>
+                                        <button type="button" data-move-photo="${gIndex}-${pIndex}" data-target-group="${nextTargetIdx !== null ? nextTargetIdx : ''}" ${nextTargetIdx === null ? 'disabled' : ''} class="py-1.5 px-2 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1 ${nextTargetIdx === null ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-sky-50 hover:bg-sky-100 text-sky-800 border-sky-200'}">↓ 下の個体へ</button>
+                                    </div>
                                 </div>
                             `;
                         }).join('')}
@@ -1223,8 +1246,7 @@
                 btn.addEventListener('click', (e) => {
                     const gIdx = parseInt(e.target.dataset.groupTypeBtn);
                     groups[gIdx].type = e.target.dataset.type;
-                    const max = ANIMAL_TYPES.find(a => a.id === groups[gIdx].type).max;
-                    groups[gIdx].selectedIndices = groups[gIdx].photos.map((_, i) => i < max);
+                    normalizeGroupSelections(groups[gIdx]);
                     updateGroupNumbersAndControlNums();
                     renderGroups();
                 });
@@ -1436,4 +1458,3 @@
     </style>
 </body>
 </html>
-
