@@ -944,14 +944,14 @@
             reader.readAsText(file);
         });
 
-        // 写真読み込み処理
+        // 写真読み込み処理（★自動リサイズ・圧縮処理を追加）
         async function handleFiles(files) {
             rawPhotos = [];
             const fileArray = Array.from(files).filter(f => f.type.startsWith('image/'));
             if (fileArray.length === 0) { alert('有効な画像ファイルがありません。'); return; }
 
             dropZone.classList.remove('next-action-pulse');
-            dropZone.innerHTML = `<p class="text-lg sm:text-xl font-bold text-emerald-700">写真を読み込んでいます... (${fileArray.length}枚)</p>`;
+            dropZone.innerHTML = `<p class="text-lg sm:text-xl font-bold text-emerald-700">写真を圧縮・読み込んでいます... (${fileArray.length}枚)</p>`;
 
             for (let file of fileArray) {
                 let dateTime = null;
@@ -963,15 +963,57 @@
                 } catch (err) {}
                 if (!dateTime || isNaN(dateTime)) dateTime = new Date(file.lastModified);
 
-                const objUrl = URL.createObjectURL(file);
-                rawPhotos.push({ file: file, url: objUrl, originalUrl: objUrl, isEdited: false, dateTime: dateTime, name: file.name });
+                // 画像をブラウザ上で縮小・圧縮してBlobURLを作成する関数
+                const compressedBlobUrl = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            let width = img.width;
+                            let height = img.height;
+                            const MAX_DIM = 2000; // 長辺の最大ピクセルを2000pxに制限
+
+                            if (width > MAX_DIM || height > MAX_DIM) {
+                                if (width > height) {
+                                    height = Math.round((height * MAX_DIM) / width);
+                                    width = MAX_DIM;
+                                } else {
+                                    width = Math.round((width * MAX_DIM) / height);
+                                    height = MAX_DIM;
+                                }
+                            }
+
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+
+                            // 画質85%のJPEGでBlob化（これにより30MB制限を確実に回避）
+                            canvas.toBlob((blob) => {
+                                resolve(URL.createObjectURL(blob));
+                            }, 'image/jpeg', 0.85);
+                        };
+                        img.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+
+                rawPhotos.push({
+                    file: file,
+                    url: compressedBlobUrl,
+                    originalUrl: compressedBlobUrl,
+                    isEdited: false,
+                    dateTime: dateTime,
+                    name: file.name
+                });
             }
 
             rawPhotos.sort((a, b) => a.dateTime - b.dateTime);
 
             dropZone.innerHTML = `
                 <svg class="w-12 h-12 mx-auto text-emerald-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                <p class="text-lg font-bold text-slate-800">${rawPhotos.length}枚の写真を読み込みました</p>
+                <p class="text-lg font-bold text-slate-800">${rawPhotos.length}枚の写真を圧縮して読み込みました</p>
                 <p class="text-sm text-slate-500 mt-1">別の写真に入れ替える場合は、ここを押して選び直せます</p>
             `;
             buildGroups();
@@ -1114,7 +1156,7 @@
             const unclassifiedCount = groups.filter(g => g.type === 'unclassified').length;
             const classifiedCount = groups.length - unclassifiedCount;
 
-            // 全件確認後の完了・次ステップ誘導画面
+            // 全件確認后的完了・次ステップ誘導画面
             if (isStepCompleted) {
                 stepViewContainer.innerHTML = `
                     <div id="step-counter-anchor" class="bg-white shadow-xl border-4 border-emerald-500 rounded-2xl p-6 sm:p-10 text-center space-y-6">
@@ -1640,3 +1682,4 @@
     </style>
 </body>
 </html>
+
