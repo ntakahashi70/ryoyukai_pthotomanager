@@ -972,7 +972,7 @@
                             const canvas = document.createElement('canvas');
                             let width = img.width;
                             let height = img.height;
-                            const MAX_DIM = 2000; // 長辺の最大ピクセルを2000pxに制限
+                            const MAX_DIM = 1200; // 長辺の最大ピクセルを2000pxに制限
 
                             if (width > MAX_DIM || height > MAX_DIM) {
                                 if (width > height) {
@@ -992,7 +992,7 @@
                             // 画質85%のJPEGでBlob化（これにより30MB制限を確実に回避）
                             canvas.toBlob((blob) => {
                                 resolve(URL.createObjectURL(blob));
-                            }, 'image/jpeg', 0.85);
+                            }, 'image/jpeg', 0.75);
                         };
                         img.src = event.target.result;
                     };
