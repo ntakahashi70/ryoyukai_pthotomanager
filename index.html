@@ -944,7 +944,71 @@
             reader.readAsText(file);
         });
 
-        // 写真読み込み処理（省メモリ・エラー回避・進捗表示対応版）
+        // 1枚分の画像圧縮（createImageBitmap優先＋Imageフォールバック）
+        async function compressSingleImage(file, maxDim = 1200, quality = 0.75) {
+            const drawAndExport = (source, srcWidth, srcHeight) => {
+                return new Promise((resolve) => {
+                    try {
+                        let width = srcWidth;
+                        let height = srcHeight;
+
+                        if (width > maxDim || height > maxDim) {
+                            if (width > height) {
+                                height = Math.round((height * maxDim) / width);
+                                width = maxDim;
+                            } else {
+                                width = Math.round((width * maxDim) / height);
+                                height = maxDim;
+                            }
+                        }
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(source, 0, 0, width, height);
+
+                        canvas.toBlob((blob) => {
+                            canvas.width = 0;
+                            canvas.height = 0;
+                            resolve(blob ? URL.createObjectURL(blob) : null);
+                        }, 'image/jpeg', quality);
+                    } catch (e) {
+                        resolve(null);
+                    }
+                });
+            };
+
+            // 1. createImageBitmap による高速デコード
+            if (typeof createImageBitmap === 'function') {
+                try {
+                    const bitmap = await createImageBitmap(file);
+                    const url = await drawAndExport(bitmap, bitmap.width, bitmap.height);
+                    bitmap.close();
+                    if (url) return url;
+                } catch (e) {
+                    // 非対応形式やエラー時は下のフォールバックへ
+                }
+            }
+
+            // 2. フォールバック（従来の Image + ObjectURL）
+            return new Promise((resolve) => {
+                const sourceUrl = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = async () => {
+                    const url = await drawAndExport(img, img.width, img.height);
+                    URL.revokeObjectURL(sourceUrl);
+                    resolve(url);
+                };
+                img.onerror = () => {
+                    URL.revokeObjectURL(sourceUrl);
+                    resolve(null);
+                };
+                img.src = sourceUrl;
+            });
+        }
+
+        // 写真読み込み処理（3並列・省メモリ・進捗表示対応版）
         async function handleFiles(files) {
             const fileArray = Array.from(files).filter(f => f.type.startsWith('image/'));
             if (fileArray.length === 0) {
@@ -952,7 +1016,12 @@
                 return;
             }
 
-            // 前回読み込んだ写真のBlob URLを解放（再読み込み時のメモリリーク防止）
+            // 調整しやすい設定定数（さらに軽量化するなら MAX_DIM = 1000, JPEG_QUALITY = 0.7）
+            const MAX_DIM = 1000;
+            const JPEG_QUALITY = 0.70;
+            const CONCURRENCY = 3;
+
+            // 前回読み込んだ写真のBlob URLを解放
             const urlsToRevoke = new Set();
             rawPhotos.forEach(p => {
                 if (p.url && p.url.startsWith('blob:')) urlsToRevoke.add(p.url);
@@ -973,101 +1042,59 @@
             const progressText = document.getElementById('upload-progress-text');
             const progressBar = document.getElementById('upload-progress-bar');
 
-            // canvasを1つだけ作って使い回す（iOS Safari等の連続生成によるクラッシュ対策）
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            const MAX_DIM = 1200;
+            let nextIndex = 0;
+            let completedCount = 0;
             let skippedCount = 0;
 
-            for (let i = 0; i < fileArray.length; i++) {
-                const file = fileArray[i];
+            async function worker() {
+                while (nextIndex < fileArray.length) {
+                    const currentIndex = nextIndex++;
+                    const file = fileArray[currentIndex];
 
-                // 進捗表示を更新
-                if (progressText) {
-                    progressText.textContent = `写真を圧縮・読み込んでいます... (${i + 1} / ${fileArray.length}枚)`;
-                }
-                if (progressBar) {
-                    progressBar.style.width = `${Math.round(((i + 1) / fileArray.length) * 100)}%`;
-                }
-
-                // EXIF日時の取得
-                let dateTime = null;
-                try {
-                    const exifData = await exifr.parse(file, ['DateTimeOriginal', 'CreateDate']);
-                    if (exifData && (exifData.DateTimeOriginal || exifData.CreateDate)) {
-                        dateTime = new Date(exifData.DateTimeOriginal || exifData.CreateDate);
-                    }
-                } catch (err) {}
-                if (!dateTime || isNaN(dateTime)) dateTime = new Date(file.lastModified);
-
-                // FileReader(Base64)を使わずObjectURLで省メモリに縮小・圧縮
-                const compressedBlobUrl = await new Promise((resolve) => {
-                    const sourceUrl = URL.createObjectURL(file);
-                    const img = new Image();
-
-                    img.onload = () => {
+                    // EXIF日時の取得と画像圧縮を同時実行
+                    const exifPromise = (async () => {
+                        let dateTime = null;
                         try {
-                            let width = img.width;
-                            let height = img.height;
-
-                            if (width > MAX_DIM || height > MAX_DIM) {
-                                if (width > height) {
-                                    height = Math.round((height * MAX_DIM) / width);
-                                    width = MAX_DIM;
-                                } else {
-                                    width = Math.round((width * MAX_DIM) / height);
-                                    height = MAX_DIM;
-                                }
+                            const exifData = await exifr.parse(file, ['DateTimeOriginal', 'CreateDate']);
+                            if (exifData && (exifData.DateTimeOriginal || exifData.CreateDate)) {
+                                dateTime = new Date(exifData.DateTimeOriginal || exifData.CreateDate);
                             }
+                        } catch (err) {}
+                        if (!dateTime || isNaN(dateTime)) dateTime = new Date(file.lastModified);
+                        return dateTime;
+                    })();
 
-                            canvas.width = width;
-                            canvas.height = height;
-                            ctx.clearRect(0, 0, width, height);
-                            ctx.drawImage(img, 0, 0, width, height);
+                    const [dateTime, compressedBlobUrl] = await Promise.all([
+                        exifPromise,
+                        compressSingleImage(file, MAX_DIM, JPEG_QUALITY)
+                    ]);
 
-                            URL.revokeObjectURL(sourceUrl); // 元画像のURLを即解放
+                    if (compressedBlobUrl) {
+                        rawPhotos.push({
+                            file: file,
+                            url: compressedBlobUrl,
+                            originalUrl: compressedBlobUrl,
+                            isEdited: false,
+                            dateTime: dateTime,
+                            name: file.name
+                        });
+                    } else {
+                        skippedCount++;
+                    }
 
-                            canvas.toBlob((blob) => {
-                                if (!blob) {
-                                    resolve(null);
-                                    return;
-                                }
-                                resolve(URL.createObjectURL(blob));
-                            }, 'image/jpeg', 0.75);
-                        } catch (e) {
-                            URL.revokeObjectURL(sourceUrl);
-                            resolve(null);
-                        }
-                    };
-
-                    img.onerror = () => {
-                        URL.revokeObjectURL(sourceUrl);
-                        resolve(null); // 破損画像やHEIC等の非対応形式はスキップ
-                    };
-
-                    img.src = sourceUrl;
-                });
-
-                if (compressedBlobUrl) {
-                    rawPhotos.push({
-                        file: file,
-                        url: compressedBlobUrl,
-                        originalUrl: compressedBlobUrl,
-                        isEdited: false,
-                        dateTime: dateTime,
-                        name: file.name
-                    });
-                } else {
-                    skippedCount++;
+                    completedCount++;
+                    if (progressText) {
+                        progressText.textContent = `写真を圧縮・読み込んでいます... (${completedCount} / ${fileArray.length}枚)`;
+                    }
+                    if (progressBar) {
+                        progressBar.style.width = `${Math.round((completedCount / fileArray.length) * 100)}%`;
+                    }
                 }
-
-                // ブラウザに画面描画の隙間を渡し、フリーズ感を防ぐ
-                await new Promise(r => setTimeout(r, 0));
             }
 
-            // 使い終わったcanvasのメモリを明示的に解放
-            canvas.width = 0;
-            canvas.height = 0;
+            // 最大3ワーカーで並列処理
+            const workerCount = Math.min(CONCURRENCY, fileArray.length);
+            await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
             if (rawPhotos.length === 0) {
                 alert('読み込める画像がありませんでした。（非対応の形式や破損ファイルの可能性があります）');
