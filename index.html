@@ -11,6 +11,8 @@
     <!-- Cropper.js CDN for photo cropping, rotation, and flipping -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+    <!-- pdf-lib CDN for client-side PDF generation & size-based splitting -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <link rel="apple-touch-icon" href="images/icon.png">
     <style>
         .cropper-container {
@@ -41,7 +43,7 @@
                 <button id="header-save-btn" type="button" class="hidden bg-sky-600 hover:bg-sky-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm shadow-sm transition flex items-center gap-1.5">
                     <span>💾 途中保存</span>
                 </button>
-                <a href="manual_v1.0.0.pdf" target="_blank" rel="noopener noreferrer" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm shadow-sm transition flex items-center gap-1.5 shrink-0">
+                <a href="manual_v1.0.1.pdf" target="_blank" rel="noopener noreferrer" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm shadow-sm transition flex items-center gap-1.5 shrink-0">
                     <svg class="w-4 h-4 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
                     <span>使い方ガイド</span>
                 </a>
@@ -240,6 +242,81 @@
         </div>
     </div>
 
+    <!-- ステップ4：出力方法選択・分割PDFダウンロードモーダル -->
+    <div id="export-modal" class="hidden fixed inset-0 bg-slate-900/75 z-[70] flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden">
+            <div class="bg-slate-800 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="bg-emerald-500 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">手順 ④</span>
+                        <h2 class="text-lg sm:text-xl font-bold">印刷・PDF出力の方法を選ぶ</h2>
+                    </div>
+                    <p class="text-xs sm:text-sm text-slate-300 mt-1">使うプリンターやコンビニのサービスに合わせて選べます。</p>
+                </div>
+                <button id="close-export-modal-btn" type="button" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition shrink-0">閉じる</button>
+            </div>
+
+            <div class="p-4 sm:p-6 overflow-y-auto space-y-4">
+                <!-- 1. 選択画面 -->
+                <div id="export-choice-view" class="space-y-3">
+                    <button id="export-normal-btn" type="button" class="w-full text-left bg-white hover:bg-emerald-50 border-2 border-emerald-500 rounded-2xl p-4 sm:p-5 shadow-sm transition flex items-start gap-4">
+                        <div class="text-2xl sm:text-3xl shrink-0">🖨️</div>
+                        <div class="space-y-1">
+                            <span class="block text-base sm:text-lg font-bold text-slate-800">そのまま出力（通常の印刷・PDF保存）</span>
+                            <span class="block text-xs sm:text-sm text-slate-600 leading-relaxed">ご自宅や職場のプリンターで印刷する場合や、分割せず1つのPDFとして保存したい場合に選びます。</span>
+                        </div>
+                    </button>
+
+                    <button id="export-30mb-btn" type="button" class="w-full text-left bg-white hover:bg-sky-50 border-2 border-sky-500 rounded-2xl p-4 sm:p-5 shadow-sm transition flex items-start gap-4">
+                        <div class="text-2xl sm:text-3xl shrink-0">🏪</div>
+                        <div class="space-y-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="text-base sm:text-lg font-bold text-slate-800">30MBごとに分けてPDF出力</span>
+                                <span class="bg-sky-100 text-sky-800 text-xs font-bold px-2.5 py-0.5 rounded-full">セブン‐イレブン マルチコピー用</span>
+                            </div>
+                            <span class="block text-xs sm:text-sm text-slate-600 leading-relaxed">店頭のマルチコピー機（Wi-Fiアプリ等）で読み込めるよう、1ファイル30MB未満で自動分割します。</span>
+                        </div>
+                    </button>
+
+                    <button id="export-10mb-btn" type="button" class="w-full text-left bg-white hover:bg-amber-50 border-2 border-amber-500 rounded-2xl p-4 sm:p-5 shadow-sm transition flex items-start gap-4">
+                        <div class="text-2xl sm:text-3xl shrink-0">🌐</div>
+                        <div class="space-y-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="text-base sm:text-lg font-bold text-slate-800">10MBごとに分けてPDF出力</span>
+                                <span class="bg-amber-100 text-amber-900 text-xs font-bold px-2.5 py-0.5 rounded-full">ネットプリント用</span>
+                            </div>
+                            <span class="block text-xs sm:text-sm text-slate-600 leading-relaxed">「かんたんnetprint」などで事前登録できるよう、1ファイル10MB未満で自動分割します。</span>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- 2. 作成中表示 -->
+                <div id="export-progress-view" class="hidden py-8 text-center space-y-4">
+                    <div class="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <p id="export-progress-text" class="text-base sm:text-lg font-bold text-slate-800">PDFを作成しています...</p>
+                    <div class="w-full max-w-md mx-auto bg-slate-200 rounded-full h-3 overflow-hidden">
+                        <div id="export-progress-bar" class="bg-emerald-600 h-3 rounded-full transition-all duration-150" style="width: 0%"></div>
+                    </div>
+                    <p class="text-xs text-slate-500">写真の数によっては少し時間がかかります。そのままお待ちください。</p>
+                </div>
+
+                <!-- 3. 1ファイルずつダウンロード画面 -->
+                <div id="export-result-view" class="hidden space-y-4">
+                    <div class="bg-emerald-50 border-2 border-emerald-300 rounded-xl p-4">
+                        <p id="export-result-summary" class="text-sm sm:text-base font-bold text-emerald-900"></p>
+                        <p class="text-xs sm:text-sm text-emerald-800 mt-1">下のボタンを上から1つずつ押して、順番に端末へ保存してください。</p>
+                    </div>
+
+                    <div id="export-file-list" class="space-y-2.5"></div>
+
+                    <div class="pt-3 border-t border-slate-200 flex justify-between items-center">
+                        <button id="export-back-btn" type="button" class="text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-4 py-2.5 rounded-xl border border-slate-300 transition">← 出力方法を選び直す</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 写真加工・補正モーダル -->
     <div id="photo-editor-modal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-xs z-[60] flex items-center justify-center p-2 sm:p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[95vh] flex flex-col overflow-hidden">
@@ -408,6 +485,22 @@
         const modalStartNumInput = document.getElementById('modal-start-num-input');
         const modalSaveBtn = document.getElementById('modal-save-btn');
         const modalGotoPrintBtn = document.getElementById('modal-goto-print-btn');
+
+        // 出力選択・分割PDFモーダル要素
+        const exportModal = document.getElementById('export-modal');
+        const closeExportModalBtn = document.getElementById('close-export-modal-btn');
+        const exportChoiceView = document.getElementById('export-choice-view');
+        const exportProgressView = document.getElementById('export-progress-view');
+        const exportProgressText = document.getElementById('export-progress-text');
+        const exportProgressBar = document.getElementById('export-progress-bar');
+        const exportResultView = document.getElementById('export-result-view');
+        const exportResultSummary = document.getElementById('export-result-summary');
+        const exportFileList = document.getElementById('export-file-list');
+        const exportNormalBtn = document.getElementById('export-normal-btn');
+        const export30mbBtn = document.getElementById('export-30mb-btn');
+        const export10mbBtn = document.getElementById('export-10mb-btn');
+        const exportBackBtn = document.getElementById('export-back-btn');
+        let generatedPdfUrls = [];
 
         const lightboxModal = document.getElementById('image-lightbox-modal');
         const lightboxImg = document.getElementById('lightbox-img');
@@ -680,17 +773,44 @@
 
             if (!croppedCanvas) return;
 
-            const b = sliderBrightness.value;
-            const c = sliderContrast.value;
-            const s = sliderSaturation.value;
+            const b = parseFloat(sliderBrightness.value) / 100;
+                        const c = parseFloat(sliderContrast.value) / 100;
+                        const s = parseFloat(sliderSaturation.value) / 100;
 
-            const finalCanvas = document.createElement('canvas');
-            finalCanvas.width = croppedCanvas.width;
-            finalCanvas.height = croppedCanvas.height;
-            const ctx = finalCanvas.getContext('2d');
+                        const finalCanvas = document.createElement('canvas');
+                        finalCanvas.width = croppedCanvas.width;
+                        finalCanvas.height = croppedCanvas.height;
+                        const ctx = finalCanvas.getContext('2d');
+                        ctx.drawImage(croppedCanvas, 0, 0);
 
-            ctx.filter = `brightness(${b}%) contrast(${c}%) saturate(${s}%)`;
-            ctx.drawImage(croppedCanvas, 0, 0);
+                        // 100%以外が指定されている場合のみピクセル単位で補正（Safari・iPhone対応）
+                        if (b !== 1 || c !== 1 || s !== 1) {
+                            const imgData = ctx.getImageData(0, 0, finalCanvas.width, finalCanvas.height);
+                            const data = imgData.data;
+
+                            for (let i = 0; i < data.length; i += 4) {
+                                // 1. 明るさ
+                                let r = data[i] * b;
+                                let g = data[i + 1] * b;
+                                let bl = data[i + 2] * b;
+
+                                // 2. コントラスト
+                                r = (r - 128) * c + 128;
+                                g = (g - 128) * c + 128;
+                                bl = (bl - 128) * c + 128;
+
+                                // 3. 鮮やかさ（彩度）
+                                const gray = 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+                                r = gray + (r - gray) * s;
+                                g = gray + (g - gray) * s;
+                                bl = gray + (bl - gray) * s;
+
+                                data[i] = Math.max(0, Math.min(255, r));
+                                data[i + 1] = Math.max(0, Math.min(255, g));
+                                data[i + 2] = Math.max(0, Math.min(255, bl));
+                            }
+                            ctx.putImageData(imgData, 0, 0);
+                        }
 
             finalCanvas.toBlob((blob) => {
                 if (!blob) return;
@@ -762,11 +882,55 @@
 
         reGroupBtn.addEventListener('click', () => { if (rawPhotos.length > 0) buildGroups(); });
 
-        const triggerPrint = () => {
+        // ステップ4：出力方法の選択ポップアップを開く
+        function revokeGeneratedPdfUrls() {
+            generatedPdfUrls.forEach(url => URL.revokeObjectURL(url));
+            generatedPdfUrls = [];
+        }
+
+        function openExportModal() {
+            const hasExportable = groups.some(g => g.type !== 'unclassified');
+            if (!hasExportable) {
+                alert('出力できる写真がありません。（「未分類」のままの写真は出力されません）');
+                return;
+            }
             updateWizardProgressUI(4);
-            window.print();
+            revokeGeneratedPdfUrls();
+            exportChoiceView.classList.remove('hidden');
+            exportProgressView.classList.add('hidden');
+            exportResultView.classList.add('hidden');
+            exportModal.classList.remove('hidden');
+            document.body.classList.add('modal-open');
+        }
+
+        function closeExportModal() {
+            revokeGeneratedPdfUrls();
+            exportModal.classList.add('hidden');
+            document.body.classList.remove('modal-open');
+        }
+
+        const triggerPrint = () => {
+            openExportModal();
         };
         modalGotoPrintBtn.addEventListener('click', triggerPrint);
+        closeExportModalBtn.addEventListener('click', closeExportModal);
+        exportBackBtn.addEventListener('click', () => {
+            revokeGeneratedPdfUrls();
+            exportProgressView.classList.add('hidden');
+            exportResultView.classList.add('hidden');
+            exportChoiceView.classList.remove('hidden');
+        });
+        exportNormalBtn.addEventListener('click', () => {
+            closeExportModal();
+            window.print();
+        });
+        // 10進数(MB)・2進数(MiB)どちらの基準でも確実に収まるよう余裕を持たせた上限値
+        export30mbBtn.addEventListener('click', () => {
+            generateSplitPdfs(27.5 * 1024 * 1024, '30MB以下（マルチコピー用）');
+        });
+        export10mbBtn.addEventListener('click', () => {
+            generateSplitPdfs(9.0 * 1024 * 1024, '10MB以下（ネットプリント用）');
+        });
 
         // ステップ3：番号整理モーダル制御
         function openNumberManagerModal() {
@@ -1375,7 +1539,7 @@
             const unclassifiedCount = groups.filter(g => g.type === 'unclassified').length;
             const classifiedCount = groups.length - unclassifiedCount;
 
-            // 全件確認后的完了・次ステップ誘導画面
+            // 全件確認後の完了・次ステップ誘導画面
             if (isStepCompleted) {
                 stepViewContainer.innerHTML = `
                     <div id="step-counter-anchor" class="bg-white shadow-xl border-4 border-emerald-500 rounded-2xl p-6 sm:p-10 text-center space-y-6">
@@ -1532,12 +1696,10 @@
                         isStepCompleted = true;
                     }
                     renderStepView();
-                    // ▼▼▼ 「設定」や「写真の追加」があるコントロールバーのあたりへ移動するよう変更 ▼▼▼
                     const anchor = document.getElementById('controls');
                     if (anchor) {
                         anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }
-
                 });
             });
 
@@ -1696,6 +1858,451 @@
             });
         }
 
+        // ==========================================
+        // 分割PDF生成ロジック（30MB / 10MB対応）
+        // ==========================================
+        const MM_TO_PT = 72 / 25.4;
+
+        function formatFileSizeMB(bytes) {
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        async function renderCanvasToJpgBytes(widthPx, heightPx, drawFn) {
+            const canvas = document.createElement('canvas');
+            canvas.width = widthPx;
+            canvas.height = heightPx;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, widthPx, heightPx);
+            drawFn(ctx, widthPx, heightPx);
+            return new Promise((resolve) => {
+                canvas.toBlob(async (blob) => {
+                    const buf = await blob.arrayBuffer();
+                    canvas.width = 0;
+                    canvas.height = 0;
+                    resolve(new Uint8Array(buf));
+                }, 'image/jpeg', 0.90);
+            });
+        }
+
+        async function fetchPhotoAsPdfImage(url) {
+            const res = await fetch(url);
+            const buf = await res.arrayBuffer();
+            const bytes = new Uint8Array(buf);
+            // JPEG マジックバイト判定 (FF D8)
+            if (bytes.length >= 2 && bytes[0] === 0xFF && bytes[1] === 0xD8) {
+                return { bytes, type: 'jpg' };
+            }
+            // PNG マジックバイト判定 (89 50 4E 47)
+            if (bytes.length >= 4 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) {
+                return { bytes, type: 'png' };
+            }
+            // その他の形式は Canvas 経由で JPEG 化
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const c = document.createElement('canvas');
+                    c.width = img.naturalWidth || 1000;
+                    c.height = img.naturalHeight || 750;
+                    const ctx = c.getContext('2d');
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, c.width, c.height);
+                    ctx.drawImage(img, 0, 0);
+                    c.toBlob(async (b) => {
+                        const jBuf = await b.arrayBuffer();
+                        c.width = 0;
+                        c.height = 0;
+                        resolve({ bytes: new Uint8Array(jBuf), type: 'jpg' });
+                    }, 'image/jpeg', 0.85);
+                };
+                img.src = url;
+            });
+        }
+
+        function buildPdfPageTasks() {
+            const tasks = [];
+            ANIMAL_TYPES.forEach(animal => {
+                if (animal.id === 'unclassified') return;
+                const animalGroups = groups.filter(g => g.type === animal.id);
+                if (animalGroups.length === 0) return;
+
+                if (animal.id === 'deer') {
+                    animalGroups.forEach(group => {
+                        tasks.push({ mode: 'deer', animal, group });
+                    });
+                } else {
+                    const chunkSize = 4;
+                    for (let i = 0; i < animalGroups.length; i += chunkSize) {
+                        tasks.push({ mode: 'other', animal, chunk: animalGroups.slice(i, i + chunkSize) });
+                    }
+                }
+            });
+            return tasks;
+        }
+
+        async function preparePageAssets(task) {
+            let totalAssetBytes = 0;
+
+            // 見出しバナー生成 (180mm x 10mm 相当を 1440 x 80 px で高精細描画)
+            const headerTitle = task.mode === 'deer'
+                ? `【 駆除写真帳：シカ 】 連番: No.${task.group.serialNumber}`
+                : `【 駆除写真帳：${task.animal.name} 一覧 】`;
+
+            const headerJpg = await renderCanvasToJpgBytes(1440, 80, (ctx, w, h) => {
+                ctx.fillStyle = '#000000';
+                ctx.font = 'bold 38px "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(headerTitle, 4, h / 2 - 4);
+                ctx.fillRect(0, h - 5, w, 4);
+            });
+            totalAssetBytes += headerJpg.byteLength;
+
+            if (task.mode === 'deer') {
+                const group = task.group;
+                if (group.isEmpty) {
+                    const emptyJpg = await renderCanvasToJpgBytes(1000, 320, (ctx, w, h) => {
+                        ctx.fillStyle = '#fafafa';
+                        ctx.fillRect(0, 0, w, h);
+                        ctx.strokeStyle = '#999999';
+                        ctx.lineWidth = 5;
+                        ctx.setLineDash([16, 12]);
+                        ctx.strokeRect(4, 4, w - 8, h - 8);
+                        ctx.setLineDash([]);
+                        ctx.fillStyle = '#555555';
+                        ctx.font = 'bold 40px "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('※ 撮影写真なし', w / 2, h / 2);
+                    });
+                    totalAssetBytes += emptyJpg.byteLength;
+                    return { mode: 'deer', headerJpg, isEmpty: true, emptyJpg, photos: [], totalAssetBytes };
+                }
+
+                const photos = [];
+                for (let pIdx = 0; pIdx < group.photos.length; pIdx++) {
+                    if (group.selectedIndices[pIdx]) {
+                        const imgData = await fetchPhotoAsPdfImage(group.photos[pIdx].url);
+                        totalAssetBytes += imgData.bytes.byteLength;
+                        photos.push(imgData);
+                    }
+                }
+                return { mode: 'deer', headerJpg, isEmpty: false, photos, totalAssetBytes };
+            } else {
+                const emptySlotJpg = await renderCanvasToJpgBytes(500, 260, (ctx, w, h) => {
+                    ctx.fillStyle = '#fafafa';
+                    ctx.fillRect(0, 0, w, h);
+                    ctx.strokeStyle = '#aaaaaa';
+                    ctx.lineWidth = 4;
+                    ctx.setLineDash([12, 10]);
+                    ctx.strokeRect(3, 3, w - 6, h - 6);
+                    ctx.setLineDash([]);
+                    ctx.fillStyle = '#666666';
+                    ctx.font = 'bold 26px "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('※ 撮影写真なし', w / 2, h / 2);
+                });
+                let usedEmptySlot = false;
+
+                const boxes = [];
+                for (const group of task.chunk) {
+                    const subHeaderJpg = await renderCanvasToJpgBytes(1000, 44, (ctx, w, h) => {
+                        ctx.fillStyle = '#111111';
+                        ctx.font = 'bold 24px "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(`連番: No.${group.serialNumber}`, w / 2, h / 2 - 2);
+                        ctx.strokeStyle = '#cccccc';
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([6, 6]);
+                        ctx.beginPath();
+                        ctx.moveTo(0, h - 2);
+                        ctx.lineTo(w, h - 2);
+                        ctx.stroke();
+                    });
+                    totalAssetBytes += subHeaderJpg.byteLength;
+
+                    const slots = [];
+                    if (group.isEmpty) {
+                        usedEmptySlot = true;
+                        slots.push({ isEmpty: true }, { isEmpty: true });
+                    } else {
+                        const selected = [];
+                        group.photos.forEach((p, idx) => {
+                            if (group.selectedIndices[idx]) selected.push(p.url);
+                        });
+                        for (let s = 0; s < 2; s++) {
+                            if (selected[s]) {
+                                const imgData = await fetchPhotoAsPdfImage(selected[s]);
+                                totalAssetBytes += imgData.bytes.byteLength;
+                                slots.push({ isEmpty: false, imgData });
+                            } else {
+                                usedEmptySlot = true;
+                                slots.push({ isEmpty: true });
+                            }
+                        }
+                    }
+                    boxes.push({ subHeaderJpg, slots });
+                }
+                if (usedEmptySlot) totalAssetBytes += emptySlotJpg.byteLength;
+                return { mode: 'other', headerJpg, emptySlotJpg, boxes, totalAssetBytes };
+            }
+        }
+
+        async function drawPreparedPageToPdf(pdfDoc, prepared) {
+            const { rgb } = PDFLib;
+            const pageW = 210 * MM_TO_PT;
+            const pageH = 297 * MM_TO_PT;
+            const page = pdfDoc.addPage([pageW, pageH]);
+
+            const marginX = 15 * MM_TO_PT;
+            const marginTop = 10 * MM_TO_PT;
+            const contentW = pageW - marginX * 2; // 180mm
+
+            // ヘッダー描画 (高さ 10mm)
+            const headerImg = await pdfDoc.embedJpg(prepared.headerJpg);
+            const headerH = 10 * MM_TO_PT;
+            const headerY = pageH - marginTop - headerH;
+            page.drawImage(headerImg, { x: marginX, y: headerY, width: contentW, height: headerH });
+
+            let cursorY = headerY - 4 * MM_TO_PT;
+
+            if (prepared.mode === 'deer') {
+                if (prepared.isEmpty) {
+                    const emptyImg = await pdfDoc.embedJpg(prepared.emptyJpg);
+                    const boxH = 110 * MM_TO_PT;
+                    page.drawImage(emptyImg, { x: marginX, y: cursorY - boxH, width: contentW, height: boxH });
+                } else {
+                    const boxPad = 3 * MM_TO_PT;
+                    const gap = 5 * MM_TO_PT;
+                    const imgAreaH = 72 * MM_TO_PT;
+                    const boxH = imgAreaH + boxPad * 2;
+
+                    for (const photo of prepared.photos) {
+                        const boxBottomY = cursorY - boxH;
+                        page.drawRectangle({
+                            x: marginX,
+                            y: boxBottomY,
+                            width: contentW,
+                            height: boxH,
+                            borderColor: rgb(0.8, 0.8, 0.8),
+                            borderWidth: 0.75
+                        });
+
+                        const embedded = photo.type === 'png'
+                            ? await pdfDoc.embedPng(photo.bytes)
+                            : await pdfDoc.embedJpg(photo.bytes);
+
+                        const maxW = contentW - boxPad * 2;
+                        const maxH = imgAreaH;
+                        const scale = Math.min(maxW / embedded.width, maxH / embedded.height);
+                        const drawW = embedded.width * scale;
+                        const drawH = embedded.height * scale;
+                        const drawX = marginX + (contentW - drawW) / 2;
+                        const drawY = boxBottomY + (boxH - drawH) / 2;
+
+                        page.drawImage(embedded, { x: drawX, y: drawY, width: drawW, height: drawH });
+                        cursorY = boxBottomY - gap;
+                    }
+                }
+            } else {
+                const boxH = 60 * MM_TO_PT;
+                const boxGap = 3 * MM_TO_PT;
+                const padX = 3 * MM_TO_PT;
+                const padY = 2 * MM_TO_PT;
+                const subHeaderH = 6 * MM_TO_PT;
+                const photoGap = 3 * MM_TO_PT;
+                const slotW = (contentW - padX * 2 - photoGap) / 2;
+                const slotH = 48 * MM_TO_PT;
+
+                let embeddedEmptySlot = null;
+
+                for (const box of prepared.boxes) {
+                    const boxBottomY = cursorY - boxH;
+                    page.drawRectangle({
+                        x: marginX,
+                        y: boxBottomY,
+                        width: contentW,
+                        height: boxH,
+                        borderColor: rgb(0.2, 0.2, 0.2),
+                        borderWidth: 0.75
+                    });
+
+                    const subImg = await pdfDoc.embedJpg(box.subHeaderJpg);
+                    const subY = cursorY - padY - subHeaderH;
+                    page.drawImage(subImg, {
+                        x: marginX + padX,
+                        y: subY,
+                        width: contentW - padX * 2,
+                        height: subHeaderH
+                    });
+
+                    const slotY = boxBottomY + padY;
+                    for (let s = 0; s < 2; s++) {
+                        const slotX = marginX + padX + s * (slotW + photoGap);
+                        const slot = box.slots[s];
+                        if (slot.isEmpty) {
+                            if (!embeddedEmptySlot) {
+                                embeddedEmptySlot = await pdfDoc.embedJpg(prepared.emptySlotJpg);
+                            }
+                            page.drawImage(embeddedEmptySlot, { x: slotX, y: slotY, width: slotW, height: slotH });
+                        } else {
+                            page.drawRectangle({
+                                x: slotX,
+                                y: slotY,
+                                width: slotW,
+                                height: slotH,
+                                borderColor: rgb(0.92, 0.92, 0.92),
+                                borderWidth: 0.5
+                            });
+                            const embedded = slot.imgData.type === 'png'
+                                ? await pdfDoc.embedPng(slot.imgData.bytes)
+                                : await pdfDoc.embedJpg(slot.imgData.bytes);
+                            const scale = Math.min(slotW / embedded.width, slotH / embedded.height);
+                            const drawW = embedded.width * scale;
+                            const drawH = embedded.height * scale;
+                            const drawX = slotX + (slotW - drawW) / 2;
+                            const drawY = slotY + (slotH - drawH) / 2;
+                            page.drawImage(embedded, { x: drawX, y: drawY, width: drawW, height: drawH });
+                        }
+                    }
+                    cursorY = boxBottomY - boxGap;
+                }
+            }
+        }
+
+        async function generateSplitPdfs(limitBytes, modeLabel) {
+            if (typeof PDFLib === 'undefined') {
+                alert('PDF作成用ライブラリの読み込みに失敗しました。インターネット接続を確認するか、「そのまま出力」をお使いください。');
+                return;
+            }
+
+            const tasks = buildPdfPageTasks();
+            if (tasks.length === 0) {
+                alert('出力できる写真がありません。');
+                return;
+            }
+
+            exportChoiceView.classList.add('hidden');
+            exportResultView.classList.add('hidden');
+            exportProgressView.classList.remove('hidden');
+            exportProgressText.textContent = `PDFを作成しています... (0 / ${tasks.length} ページ)`;
+            exportProgressBar.style.width = '0%';
+
+            revokeGeneratedPdfUrls();
+            const results = [];
+
+            try {
+                let currentDoc = await PDFLib.PDFDocument.create();
+                let currentByteEstimate = 16384; // PDFヘッダ等初期オーバーヘッド
+                let currentPageCount = 0;
+                let startPage = 1;
+
+                for (let i = 0; i < tasks.length; i++) {
+                    const prepared = await preparePageAssets(tasks[i]);
+
+                    // 現在のファイルが1ページ以上あり、次のページを足すと上限を超える場合は先に確定して分割
+                    if (currentPageCount > 0 && (currentByteEstimate + prepared.totalAssetBytes + 8192 > limitBytes)) {
+                        const pdfBytes = await currentDoc.save();
+                        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                        const url = URL.createObjectURL(blob);
+                        generatedPdfUrls.push(url);
+                        results.push({
+                            url,
+                            sizeBytes: pdfBytes.byteLength,
+                            startPage,
+                            endPage: startPage + currentPageCount - 1
+                        });
+
+                        currentDoc = await PDFLib.PDFDocument.create();
+                        currentByteEstimate = 16384;
+                        startPage = startPage + currentPageCount;
+                        currentPageCount = 0;
+                    }
+
+                    await drawPreparedPageToPdf(currentDoc, prepared);
+                    currentByteEstimate += prepared.totalAssetBytes + 4096;
+                    currentPageCount++;
+
+                    exportProgressText.textContent = `PDFを作成しています... (${i + 1} / ${tasks.length} ページ)`;
+                    exportProgressBar.style.width = `${Math.round(((i + 1) / tasks.length) * 100)}%`;
+                    // UI描画をブロックしないよう小休止
+                    await new Promise(r => setTimeout(r, 0));
+                }
+
+                if (currentPageCount > 0) {
+                    const pdfBytes = await currentDoc.save();
+                    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                    const url = URL.createObjectURL(blob);
+                    generatedPdfUrls.push(url);
+                    results.push({
+                        url,
+                        sizeBytes: pdfBytes.byteLength,
+                        startPage,
+                        endPage: startPage + currentPageCount - 1
+                    });
+                }
+
+                renderExportResults(results, modeLabel);
+            } catch (err) {
+                console.error(err);
+                alert('PDFの作成中にエラーが発生しました。「そのまま出力」をお試しください。');
+                exportProgressView.classList.add('hidden');
+                exportChoiceView.classList.remove('hidden');
+            }
+        }
+
+        function renderExportResults(results, modeLabel) {
+            const dateStr = new Date().toISOString().slice(0, 10);
+            const totalCount = results.length;
+
+            exportProgressView.classList.add('hidden');
+            exportResultView.classList.remove('hidden');
+            exportResultSummary.textContent = `【${modeLabel}】 全 ${totalCount} ファイルに分かれました`;
+            exportFileList.innerHTML = '';
+
+            results.forEach((item, idx) => {
+                const partNum = idx + 1;
+                const filename = totalCount === 1
+                    ? `猟友会_写真帳_${dateStr}.pdf`
+                    : `猟友会_写真帳_${dateStr}_${partNum}of${totalCount}.pdf`;
+                const pageRangeText = item.startPage === item.endPage
+                    ? `${item.startPage}ページ目`
+                    : `${item.startPage}〜${item.endPage}ページ`;
+
+                const row = document.createElement('div');
+                row.className = 'bg-white border-2 border-slate-200 rounded-xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm';
+                row.innerHTML = `
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="bg-slate-800 text-white text-xs font-bold px-2.5 py-1 rounded-lg">ファイル ${partNum} / ${totalCount}</span>
+                            <span class="text-sm sm:text-base font-bold text-slate-800">${pageRangeText}</span>
+                            <span class="bg-sky-100 text-sky-900 text-xs font-bold px-2.5 py-0.5 rounded-full">約 ${formatFileSizeMB(item.sizeBytes)}</span>
+                        </div>
+                        <p class="text-xs text-slate-500 break-all">${filename}</p>
+                    </div>
+                    <button type="button" class="download-part-btn w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl font-bold text-sm shadow transition shrink-0">
+                        ⬇ ${totalCount === 1 ? 'PDFを保存する' : `${partNum}つ目を保存`}
+                    </button>
+                `;
+
+                const btn = row.querySelector('.download-part-btn');
+                btn.addEventListener('click', () => {
+                    const a = document.createElement('a');
+                    a.href = item.url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+
+                    btn.className = 'download-part-btn w-full sm:w-auto bg-slate-200 hover:bg-slate-300 text-slate-800 px-5 py-3 rounded-xl font-bold text-sm border border-slate-300 transition shrink-0';
+                    btn.textContent = `✓ 保存済み（もう一度保存）`;
+                });
+
+                exportFileList.appendChild(row);
+            });
+        }
+
         // 初期表示時のステップバー状態反映
         updateWizardProgressUI(1);
     </script>
@@ -1789,7 +2396,7 @@
                 background: white !important;
                 color: black !important;
             }
-            header, nav, #step1-upload-section, #drop-zone, #controls, #step-view-container, #groups-container, #bottom-action-bar, #photo-editor-modal, #number-manager-modal, #image-lightbox-modal {
+            header, nav, #step1-upload-section, #drop-zone, #controls, #step-view-container, #groups-container, #bottom-action-bar, #photo-editor-modal, #number-manager-modal, #export-modal, #image-lightbox-modal {
                 display: none !important;
             }
             .print-page {
@@ -1901,4 +2508,3 @@
     </style>
 </body>
 </html>
-
