@@ -41,7 +41,7 @@
                 <button id="header-save-btn" type="button" class="hidden bg-sky-600 hover:bg-sky-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm shadow-sm transition flex items-center gap-1.5">
                     <span>💾 途中保存</span>
                 </button>
-                <a href="manual.pdf" target="_blank" rel="noopener noreferrer" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm shadow-sm transition flex items-center gap-1.5 shrink-0">
+                <a href="manual_v1.0.0.pdf" target="_blank" rel="noopener noreferrer" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm shadow-sm transition flex items-center gap-1.5 shrink-0">
                     <svg class="w-4 h-4 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
                     <span>使い方ガイド</span>
                 </a>
@@ -944,16 +944,53 @@
             reader.readAsText(file);
         });
 
-        // 写真読み込み処理（★自動リサイズ・圧縮処理を追加）
+        // 写真読み込み処理（省メモリ・エラー回避・進捗表示対応版）
         async function handleFiles(files) {
-            rawPhotos = [];
             const fileArray = Array.from(files).filter(f => f.type.startsWith('image/'));
-            if (fileArray.length === 0) { alert('有効な画像ファイルがありません。'); return; }
+            if (fileArray.length === 0) {
+                alert('有効な画像ファイルがありません。');
+                return;
+            }
+
+            // 前回読み込んだ写真のBlob URLを解放（再読み込み時のメモリリーク防止）
+            const urlsToRevoke = new Set();
+            rawPhotos.forEach(p => {
+                if (p.url && p.url.startsWith('blob:')) urlsToRevoke.add(p.url);
+                if (p.originalUrl && p.originalUrl.startsWith('blob:')) urlsToRevoke.add(p.originalUrl);
+            });
+            urlsToRevoke.forEach(url => URL.revokeObjectURL(url));
+            rawPhotos = [];
 
             dropZone.classList.remove('next-action-pulse');
-            dropZone.innerHTML = `<p class="text-lg sm:text-xl font-bold text-emerald-700">写真を圧縮・読み込んでいます... (${fileArray.length}枚)</p>`;
+            dropZone.innerHTML = `
+                <p id="upload-progress-text" class="text-lg sm:text-xl font-bold text-emerald-700">
+                    写真を圧縮・読み込んでいます... (0 / ${fileArray.length}枚)
+                </p>
+                <div class="w-full max-w-md mx-auto bg-slate-200 rounded-full h-3 mt-3 overflow-hidden">
+                    <div id="upload-progress-bar" class="bg-emerald-600 h-3 rounded-full transition-all duration-150" style="width: 0%"></div>
+                </div>
+            `;
+            const progressText = document.getElementById('upload-progress-text');
+            const progressBar = document.getElementById('upload-progress-bar');
 
-            for (let file of fileArray) {
+            // canvasを1つだけ作って使い回す（iOS Safari等の連続生成によるクラッシュ対策）
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const MAX_DIM = 1200;
+            let skippedCount = 0;
+
+            for (let i = 0; i < fileArray.length; i++) {
+                const file = fileArray[i];
+
+                // 進捗表示を更新
+                if (progressText) {
+                    progressText.textContent = `写真を圧縮・読み込んでいます... (${i + 1} / ${fileArray.length}枚)`;
+                }
+                if (progressBar) {
+                    progressBar.style.width = `${Math.round(((i + 1) / fileArray.length) * 100)}%`;
+                }
+
+                // EXIF日時の取得
                 let dateTime = null;
                 try {
                     const exifData = await exifr.parse(file, ['DateTimeOriginal', 'CreateDate']);
@@ -963,16 +1000,15 @@
                 } catch (err) {}
                 if (!dateTime || isNaN(dateTime)) dateTime = new Date(file.lastModified);
 
-                // 画像をブラウザ上で縮小・圧縮してBlobURLを作成する関数
+                // FileReader(Base64)を使わずObjectURLで省メモリに縮小・圧縮
                 const compressedBlobUrl = await new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        const img = new Image();
-                        img.onload = () => {
-                            const canvas = document.createElement('canvas');
+                    const sourceUrl = URL.createObjectURL(file);
+                    const img = new Image();
+
+                    img.onload = () => {
+                        try {
                             let width = img.width;
                             let height = img.height;
-                            const MAX_DIM = 1200; // 長辺の最大ピクセルを2000pxに制限
 
                             if (width > MAX_DIM || height > MAX_DIM) {
                                 if (width > height) {
@@ -986,34 +1022,69 @@
 
                             canvas.width = width;
                             canvas.height = height;
-                            const ctx = canvas.getContext('2d');
+                            ctx.clearRect(0, 0, width, height);
                             ctx.drawImage(img, 0, 0, width, height);
 
-                            // 画質85%のJPEGでBlob化（これにより30MB制限を確実に回避）
+                            URL.revokeObjectURL(sourceUrl); // 元画像のURLを即解放
+
                             canvas.toBlob((blob) => {
+                                if (!blob) {
+                                    resolve(null);
+                                    return;
+                                }
                                 resolve(URL.createObjectURL(blob));
                             }, 'image/jpeg', 0.75);
-                        };
-                        img.src = event.target.result;
+                        } catch (e) {
+                            URL.revokeObjectURL(sourceUrl);
+                            resolve(null);
+                        }
                     };
-                    reader.readAsDataURL(file);
+
+                    img.onerror = () => {
+                        URL.revokeObjectURL(sourceUrl);
+                        resolve(null); // 破損画像やHEIC等の非対応形式はスキップ
+                    };
+
+                    img.src = sourceUrl;
                 });
 
-                rawPhotos.push({
-                    file: file,
-                    url: compressedBlobUrl,
-                    originalUrl: compressedBlobUrl,
-                    isEdited: false,
-                    dateTime: dateTime,
-                    name: file.name
-                });
+                if (compressedBlobUrl) {
+                    rawPhotos.push({
+                        file: file,
+                        url: compressedBlobUrl,
+                        originalUrl: compressedBlobUrl,
+                        isEdited: false,
+                        dateTime: dateTime,
+                        name: file.name
+                    });
+                } else {
+                    skippedCount++;
+                }
+
+                // ブラウザに画面描画の隙間を渡し、フリーズ感を防ぐ
+                await new Promise(r => setTimeout(r, 0));
+            }
+
+            // 使い終わったcanvasのメモリを明示的に解放
+            canvas.width = 0;
+            canvas.height = 0;
+
+            if (rawPhotos.length === 0) {
+                alert('読み込める画像がありませんでした。（非対応の形式や破損ファイルの可能性があります）');
+                dropZone.innerHTML = `<p class="text-lg font-bold text-rose-700">画像を読み込めませんでした。別の写真をお試しください。</p>`;
+                return;
             }
 
             rawPhotos.sort((a, b) => a.dateTime - b.dateTime);
 
+            const skipNote = skippedCount > 0
+                ? `<p class="text-xs text-amber-700 font-bold mt-1">※ 読み込めない画像 ${skippedCount}枚 はスキップしました</p>`
+                : '';
+
             dropZone.innerHTML = `
                 <svg class="w-12 h-12 mx-auto text-emerald-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                 <p class="text-lg font-bold text-slate-800">${rawPhotos.length}枚の写真を圧縮して読み込みました</p>
+                ${skipNote}
                 <p class="text-sm text-slate-500 mt-1">別の写真に入れ替える場合は、ここを押して選び直せます</p>
             `;
             buildGroups();
@@ -1446,7 +1517,7 @@
                                                 ${editedBadge}
                                             </div>
                                             <button type="button" data-edit-photo="${gIndex}-${pIndex}" class="absolute top-2 right-2 z-10 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-lg shadow text-xs font-bold">✎ 加工・補正</button>
-                                            <img src="${p.url}" class="w-full h-72 object-contain bg-slate-200 rounded-lg mb-2 pointer-events-none">
+                                            <img src="${p.url}" loading="lazy" class="w-full h-72 object-contain bg-slate-200 rounded-lg mb-2 pointer-events-none">
                                             <span class="text-xs text-slate-500">${p.name}</span>
                                         </div>
                                     </div>
