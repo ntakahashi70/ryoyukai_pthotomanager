@@ -82,6 +82,44 @@
                 <p class="text-sm sm:text-base text-slate-500 mt-2">パソコンの方は、この枠の中に写真をドラッグ＆ドロップしてもOKです（複数枚まとめて選択できます）</p>
                 <input type="file" id="file-input" multiple accept="image/*" class="hidden">
             </div>
+            <!-- 写真読み込み後の2択選択エリア -->
+            <div id="post-upload-choice" class="hidden bg-white shadow-lg border-2 border-emerald-400 rounded-2xl p-6 sm:p-8 text-center space-y-6">
+                <div class="space-y-2">
+                    <div class="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">✓</div>
+                    <h2 id="choice-photo-count-text" class="text-xl sm:text-2xl font-bold text-slate-800">写真を読み込みました！</h2>
+                    <p class="text-sm sm:text-base text-slate-600">次のどちらの方法で作業を始めますか？</p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto text-left">
+                    <!-- 選択肢1：そのまま仕分け -->
+                    <button id="choice-start-fresh-btn" type="button" class="bg-emerald-600 hover:bg-emerald-700 text-white p-5 sm:p-6 rounded-2xl shadow-md transition flex flex-col justify-between gap-2 border-2 border-emerald-700 next-action-pulse">
+                        <span class="text-lg sm:text-xl font-bold flex items-center gap-2">
+                            <span>🆕 はじめから仕分けする</span>
+                        </span>
+                        <span class="text-xs sm:text-sm text-emerald-50 leading-relaxed">
+                            取り込んだ写真を自動でグループ分けして、1件ずつ動物の種類を選んでいきます。
+                        </span>
+                    </button>
+
+                    <!-- 選択肢2：作業データ読込 -->
+                    <label class="bg-sky-50 hover:bg-sky-100 text-sky-950 p-5 sm:p-6 rounded-2xl shadow-sm transition flex flex-col justify-between gap-2 border-2 border-sky-400 cursor-pointer">
+                        <span class="text-lg sm:text-xl font-bold flex items-center gap-2 text-sky-800">
+                            <span>📂 前回の続きから再開する</span>
+                        </span>
+                        <span class="text-xs sm:text-sm text-sky-800 leading-relaxed">
+                            保存した作業ファイル（.json）を読み込んで、前回の続きから編集します。
+                        </span>
+                        <input type="file" id="choice-load-project-input" accept=".json" class="hidden">
+                    </label>
+                </div>
+
+                <div class="pt-2">
+                    <button id="choice-reselect-photos-btn" type="button" class="text-xs sm:text-sm font-bold text-slate-500 hover:text-slate-800 underline transition">
+                        ← 別の写真を選び直す
+                    </button>
+                </div>
+            </div>
+
         </section>
 
         <!-- 写真読み込み後のコンパクトバー（写真追加・表示切替・詳細設定） -->
@@ -341,6 +379,11 @@
 
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
+        const postUploadChoice = document.getElementById('post-upload-choice');
+        const choicePhotoCountText = document.getElementById('choice-photo-count-text');
+        const choiceStartFreshBtn = document.getElementById('choice-start-fresh-btn');
+        const choiceLoadProjectInput = document.getElementById('choice-load-project-input');
+        const choiceReselectPhotosBtn = document.getElementById('choice-reselect-photos-btn');
         const controls = document.getElementById('controls');
         const bottomActionBar = document.getElementById('bottom-action-bar');
         const groupsContainer = document.getElementById('groups-container');
@@ -433,6 +476,10 @@
         // ステップバーのクリック動作
         navStep1.addEventListener('click', () => {
             step1UploadSection.classList.remove('hidden');
+            if (groups.length > 0 || rawPhotos.length === 0) {
+                dropZone.classList.remove('hidden');
+                postUploadChoice.classList.add('hidden');
+            }
             updateWizardProgressUI(1);
             step1UploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
@@ -460,6 +507,8 @@
             const isHidden = step1UploadSection.classList.contains('hidden');
             if (isHidden) {
                 step1UploadSection.classList.remove('hidden');
+                dropZone.classList.remove('hidden');
+                postUploadChoice.classList.add('hidden');
                 reopenUploadBtn.textContent = '▲ 枠を閉じる';
             } else {
                 step1UploadSection.classList.add('hidden');
@@ -905,8 +954,8 @@
         headerSaveBtn.addEventListener('click', saveProject);
         modalSaveBtn.addEventListener('click', saveProject);
 
-        loadProjectInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
+        // 作業データ(.json)読み込みの共通処理
+        function handleProjectFile(file, inputEl) {
             if (!file) return;
             const reader = new FileReader();
             reader.onload = async (event) => {
@@ -915,9 +964,28 @@
                     const hasPhotosInSave = savedData.groups.some(g => !g.isEmpty && g.photoNames && g.photoNames.length > 0);
                     if (hasPhotosInSave && rawPhotos.length === 0) {
                         alert('【確認】作業データを復元する前に、同じデジカメの写真ファイルを先に読み込ませてください。');
-                        loadProjectInput.value = '';
+                        if (inputEl) inputEl.value = '';
                         return;
                     }
+
+                    // 読み込んだ写真と作業データの一致数を確認
+                    let expectedCount = 0;
+                    let matchedCount = 0;
+                    savedData.groups.forEach(savedG => {
+                        if (!savedG.isEmpty && savedG.photoNames) {
+                            savedG.photoNames.forEach(pn => {
+                                expectedCount++;
+                                if (rawPhotos.some(rp => rp.name === pn.name)) matchedCount++;
+                            });
+                        }
+                    });
+
+                    if (expectedCount > 0 && matchedCount === 0) {
+                        alert('取り込んだ写真の中に、この作業データと一致するファイルが1枚も見つかりませんでした。\n同じ写真フォルダを選んでいるか確認してください。');
+                        if (inputEl) inputEl.value = '';
+                        return;
+                    }
+
                     if (savedData.threshold) thresholdSelect.value = savedData.threshold;
                     if (savedData.startSettings) {
                         for (let k in savedData.startSettings) {
@@ -934,15 +1002,31 @@
                     updateGroupNumbers();
                     currentStepIndex = 0;
                     isStepCompleted = false;
+                    postUploadChoice.classList.add('hidden');
+                    dropZone.classList.remove('hidden');
                     onFilesLoadedAndGrouped();
-                    alert('前回の作業データを読み込みました！');
+
+                    if (matchedCount < expectedCount) {
+                        alert(`前回の作業データを読み込みました！\n（一致した写真: ${matchedCount} / ${expectedCount} 枚）`);
+                    } else {
+                        alert('前回の作業データを読み込みました！');
+                    }
                 } catch (err) {
                     alert('保存ファイルの読み込みに失敗しました。');
                 }
-                loadProjectInput.value = '';
+                if (inputEl) inputEl.value = '';
             };
             reader.readAsText(file);
+        }
+
+        loadProjectInput.addEventListener('change', (e) => {
+            handleProjectFile(e.target.files[0], loadProjectInput);
         });
+
+        choiceLoadProjectInput.addEventListener('change', (e) => {
+            handleProjectFile(e.target.files[0], choiceLoadProjectInput);
+        });
+
 
         // 1枚分の画像圧縮（createImageBitmap優先＋Imageフォールバック）
         async function compressSingleImage(file, maxDim = 1200, quality = 0.75) {
@@ -1029,6 +1113,17 @@
             });
             urlsToRevoke.forEach(url => URL.revokeObjectURL(url));
             rawPhotos = [];
+            // 既に仕分け中だった場合は表示をリセットしてステップ1に戻す
+            groups = [];
+            controls.classList.add('hidden');
+            stepViewContainer.classList.add('hidden');
+            groupsContainer.classList.add('hidden');
+            bottomActionBar.classList.add('hidden');
+            headerSaveBtn.classList.add('hidden');
+            postUploadChoice.classList.add('hidden');
+            dropZone.classList.remove('hidden');
+            updateWizardProgressUI(1);
+
 
             dropZone.classList.remove('next-action-pulse');
             dropZone.innerHTML = `
@@ -1114,8 +1209,34 @@
                 ${skipNote}
                 <p class="text-sm text-slate-500 mt-1">別の写真に入れ替える場合は、ここを押して選び直せます</p>
             `;
-            buildGroups();
+            showPostUploadChoice(skippedCount);
         }
+
+        // 写真読み込み完了後の2択画面を表示
+        function showPostUploadChoice(skippedCount = 0) {
+            dropZone.classList.add('hidden');
+            postUploadChoice.classList.remove('hidden');
+
+            const skipMsg = skippedCount > 0 ? `（※未対応など ${skippedCount}枚 はスキップ）` : '';
+            choicePhotoCountText.textContent = `${rawPhotos.length}枚の写真を読み込みました！ ${skipMsg}`;
+
+            setTimeout(() => {
+                postUploadChoice.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
+
+        // 2択画面：「はじめから仕分けする」
+        choiceStartFreshBtn.addEventListener('click', () => {
+            postUploadChoice.classList.add('hidden');
+            dropZone.classList.remove('hidden');
+            buildGroups();
+        });
+
+        // 2択画面：「別の写真を選び直す」
+        choiceReselectPhotosBtn.addEventListener('click', () => {
+            postUploadChoice.classList.add('hidden');
+            dropZone.classList.remove('hidden');
+        });
 
         function buildGroups() {
             const thresholdMinutes = parseInt(thresholdSelect.value);
