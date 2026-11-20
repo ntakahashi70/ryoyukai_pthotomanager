@@ -708,8 +708,53 @@
         closeEditorBtn.addEventListener('click', closePhotoEditor);
         editorCancelFooterBtn.addEventListener('click', closePhotoEditor);
 
-        editorRotateLeftBtn.addEventListener('click', () => { if (cropperInstance) cropperInstance.rotate(-90); });
-        editorRotateRightBtn.addEventListener('click', () => { if (cropperInstance) cropperInstance.rotate(90); });
+        function fitCropBoxToCanvas() {
+            if (!cropperInstance) return;
+            const canvasData = cropperInstance.getCanvasData();
+            cropperInstance.setCropBoxData({
+                left: canvasData.left,
+                top: canvasData.top,
+                width: canvasData.width,
+                height: canvasData.height
+            });
+        }
+
+        function rotateAndFitCropBox(deg) {
+            if (!cropperInstance) return;
+            cropperInstance.rotate(deg);
+
+            const containerData = cropperInstance.getContainerData();
+
+            // ① 縮小制限に引っかからないよう、いったんクロップ枠を小さくする
+            cropperInstance.setCropBoxData({
+                left: containerData.width / 2,
+                top: containerData.height / 2,
+                width: 10,
+                height: 10
+            });
+
+            // ② 回転後の画像全体が画面内に収まるよう中央に縮小・配置する
+            const canvasData = cropperInstance.getCanvasData();
+            const scale = Math.min(
+                containerData.width / canvasData.width,
+                containerData.height / canvasData.height
+            );
+            const newWidth = canvasData.width * scale;
+            const newHeight = canvasData.height * scale;
+
+            cropperInstance.setCanvasData({
+                left: (containerData.width - newWidth) / 2,
+                top: (containerData.height - newHeight) / 2,
+                width: newWidth,
+                height: newHeight
+            });
+
+            // ③ 収まった画像の外枠にクロップ枠をぴったり合わせる
+            fitCropBoxToCanvas();
+        }
+
+        editorRotateLeftBtn.addEventListener('click', () => rotateAndFitCropBox(-90));
+        editorRotateRightBtn.addEventListener('click', () => rotateAndFitCropBox(90));
         editorFlipHBtn.addEventListener('click', () => {
             if (!cropperInstance) return;
             editorScaleX *= -1;
@@ -720,11 +765,7 @@
             editorScaleY *= -1;
             cropperInstance.scaleY(editorScaleY);
         });
-        editorCropFullBtn.addEventListener('click', () => {
-            if (!cropperInstance) return;
-            const containerData = cropperInstance.getContainerData();
-            cropperInstance.setCropBoxData({ left: 0, top: 0, width: containerData.width, height: containerData.height });
-        });
+        editorCropFullBtn.addEventListener('click', fitCropBoxToCanvas);
 
         editorResetCurrentBtn.addEventListener('click', () => {
             sliderBrightness.value = 100;
@@ -734,8 +775,7 @@
             editorScaleY = 1;
             if (cropperInstance) {
                 cropperInstance.reset();
-                const containerData = cropperInstance.getContainerData();
-                cropperInstance.setCropBoxData({ left: 0, top: 0, width: containerData.width, height: containerData.height });
+                fitCropBoxToCanvas();
             }
             updateEditorFilterPreview();
         });
@@ -920,9 +960,9 @@
             exportResultView.classList.add('hidden');
             exportChoiceView.classList.remove('hidden');
         });
-        exportNormalBtn.addEventListener('click', () => {
+       exportNormalBtn.addEventListener('click', async () => {
             closeExportModal();
-            window.print();
+            await prepareAndPrint();
         });
         // 10進数(MB)・2進数(MiB)どちらの基準でも確実に収まるよう余裕を持たせた上限値
         export30mbBtn.addEventListener('click', () => {
@@ -1093,18 +1133,48 @@
             });
         }
 
+        // Blob URL ⇔ Data URL 変換ヘルパー
+        async function blobUrlToDataUrl(blobUrl) {
+            const res = await fetch(blobUrl);
+            const blob = await res.blob();
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        async function dataUrlToBlobUrl(dataUrl) {
+            const res = await fetch(dataUrl);
+            const blob = await res.blob();
+            return URL.createObjectURL(blob);
+        }
+
         // 作業保存・復元
-        function saveProject() {
+        async function saveProject() {
             if (groups.length === 0) { alert('保存するデータがありません。'); return; }
+
+            const serializedGroups = await Promise.all(groups.map(async g => ({
+                type: g.type,
+                isEmpty: g.isEmpty || false,
+                selectedIndices: g.selectedIndices,
+                photoNames: await Promise.all(g.photos.map(async p => {
+                    const item = {
+                        name: p.name,
+                        dateTime: p.dateTime.toISOString(),
+                        isEdited: !!p.isEdited
+                    };
+                    if (p.isEdited && p.url) {
+                        item.editedDataUrl = await blobUrlToDataUrl(p.url);
+                    }
+                    return item;
+                }))
+            })));
+
             const saveData = {
                 threshold: thresholdSelect.value,
                 startSettings: startSettings,
-                groups: groups.map(g => ({
-                    type: g.type,
-                    isEmpty: g.isEmpty || false,
-                    selectedIndices: g.selectedIndices,
-                    photoNames: g.photos.map(p => ({ name: p.name, dateTime: p.dateTime.toISOString() }))
-                }))
+                groups: serializedGroups
             };
             const blob = new Blob([JSON.stringify(saveData, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -1157,11 +1227,29 @@
                         }
                     }
 
-                    groups = savedData.groups.map(savedG => {
+                    groups = await Promise.all(savedData.groups.map(async savedG => {
                         if (savedG.isEmpty) return { photos: [], type: savedG.type, selectedIndices: [], isEmpty: true };
-                        const matchedPhotos = savedG.photoNames.map(pn => rawPhotos.find(rp => rp.name === pn.name) || { file: null, url: '', originalUrl: '', isEdited: false, dateTime: new Date(pn.dateTime), name: pn.name });
+                        const matchedPhotos = await Promise.all(savedG.photoNames.map(async pn => {
+                            const basePhoto = rawPhotos.find(rp => rp.name === pn.name) || {
+                                file: null,
+                                url: '',
+                                originalUrl: '',
+                                isEdited: false,
+                                dateTime: new Date(pn.dateTime),
+                                name: pn.name
+                            };
+                            if (pn.isEdited && pn.editedDataUrl) {
+                                const editedBlobUrl = await dataUrlToBlobUrl(pn.editedDataUrl);
+                                return {
+                                    ...basePhoto,
+                                    url: editedBlobUrl,
+                                    isEdited: true
+                                };
+                            }
+                            return { ...basePhoto, isEdited: false };
+                        }));
                         return { photos: matchedPhotos, type: savedG.type, selectedIndices: savedG.selectedIndices, isEmpty: false };
-                    });
+                    }));
 
                     updateGroupNumbers();
                     currentStepIndex = 0;
@@ -2308,8 +2396,9 @@
     </script>
 
     <!-- 印刷用スクリプト（駆除番号削除済み） -->
+    <!-- 印刷用スクリプト（駆除番号削除済み） -->
     <script>
-        window.addEventListener('beforeprint', () => {
+        function buildPrintArea() {
             let oldPrintArea = document.getElementById('print-area');
             if (oldPrintArea) oldPrintArea.remove();
 
@@ -2381,6 +2470,38 @@
                     }
                 }
             });
+        }
+
+        async function prepareAndPrint() {
+            buildPrintArea();
+
+            const imgs = Array.from(document.querySelectorAll('#print-area img'));
+            await Promise.all(imgs.map(img => {
+                const decodeImg = () => (img.decode ? img.decode().catch(() => {}) : Promise.resolve());
+                if (img.complete && img.naturalWidth > 0) {
+                    return decodeImg();
+                }
+                return new Promise(resolve => {
+                    img.onload = () => decodeImg().then(resolve);
+                    img.onerror = resolve;
+                });
+            }));
+
+            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+            window.print();
+        }
+
+        // ブラウザメニュー等（Ctrl+P）から直接印刷された場合のフォールバック
+        window.addEventListener('beforeprint', () => {
+            if (!document.getElementById('print-area')) {
+                buildPrintArea();
+            }
+        });
+
+        // 印刷終了後に一度クリアし、次回は最新状態で作り直す
+        window.addEventListener('afterprint', () => {
+            const oldPrintArea = document.getElementById('print-area');
+            if (oldPrintArea) oldPrintArea.remove();
         });
     </script>
 
