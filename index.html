@@ -2296,6 +2296,7 @@
                         const url = URL.createObjectURL(blob);
                         generatedPdfUrls.push(url);
                         results.push({
+                            blob,
                             url,
                             sizeBytes: pdfBytes.byteLength,
                             startPage,
@@ -2324,6 +2325,7 @@
                     const url = URL.createObjectURL(blob);
                     generatedPdfUrls.push(url);
                     results.push({
+                        blob,
                         url,
                         sizeBytes: pdfBytes.byteLength,
                         startPage,
@@ -2375,16 +2377,45 @@
                 `;
 
                 const btn = row.querySelector('.download-part-btn');
-                btn.addEventListener('click', () => {
-                    const a = document.createElement('a');
-                    a.href = item.url;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
+                const pdfFile = new File([item.blob], filename, { type: 'application/pdf' });
+                const canSharePdf = !!(navigator.canShare && navigator.canShare({ files: [pdfFile] }));
 
-                    btn.className = 'download-part-btn w-full sm:w-auto bg-slate-200 hover:bg-slate-300 text-slate-800 px-5 py-3 rounded-xl font-bold text-sm border border-slate-300 transition shrink-0';
-                    btn.textContent = `✓ 保存済み（もう一度保存）`;
+                btn.addEventListener('click', async () => {
+                    const markAsSaved = () => {
+                        btn.className = 'download-part-btn w-full sm:w-auto bg-slate-200 hover:bg-slate-300 text-slate-800 px-5 py-3 rounded-xl font-bold text-sm border border-slate-300 transition shrink-0';
+                        btn.textContent = '✓ 保存済み（もう一度保存）';
+                    };
+
+                    const fallbackDownload = () => {
+                        const a = document.createElement('a');
+                        a.href = item.url;
+                        a.download = filename;
+                        a.target = '_blank';
+                        a.rel = 'noopener noreferrer';
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        markAsSaved();
+                    };
+
+                    // iPhone / スマホなど File共有対応ブラウザ
+                    if (canSharePdf) {
+                        try {
+                            await navigator.share({
+                                files: [pdfFile],
+                                title: filename
+                            });
+                            markAsSaved();
+                        } catch (err) {
+                            // ユーザーが共有シートを「×」で閉じただけの場合は何もしない
+                            if (err && err.name === 'AbortError') return;
+                            // それ以外のエラー時のみ通常ダウンロードへフォールバック
+                            fallbackDownload();
+                        }
+                    } else {
+                        // PCなど非対応ブラウザは従来通りダウンロード
+                        fallbackDownload();
+                    }
                 });
 
                 exportFileList.appendChild(row);
