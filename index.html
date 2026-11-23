@@ -43,6 +43,10 @@
                 <button id="header-save-btn" type="button" class="hidden bg-sky-600 hover:bg-sky-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm shadow-sm transition flex items-center gap-1.5">
                     <span>💾 途中保存</span>
                 </button>
+                <button id="open-updates-modal-btn" type="button" class="relative bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-300 px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm shadow-sm transition flex items-center gap-1.5 shrink-0">
+                                    <span>📢 更新・Q&A</span>
+                                    <span id="updates-new-badge" class="hidden bg-rose-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">新着</span>
+                                </button>
                 <a href="manual_v1.0.1.pdf" target="_blank" rel="noopener noreferrer" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm shadow-sm transition flex items-center gap-1.5 shrink-0">
                     <svg class="w-4 h-4 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
                     <span>使い方ガイド</span>
@@ -398,6 +402,30 @@
         </div>
     </div>
 
+    <div id="updates-qa-modal" class="hidden fixed inset-0 bg-slate-900/75 z-[80] flex items-center justify-center p-3 sm:p-4">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+                <div class="bg-slate-800 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
+                    <div>
+                        <h2 class="text-lg sm:text-xl font-bold">📢 修正情報・よくある質問（Q&A）</h2>
+                        <p id="updates-version-label" class="text-xs text-slate-300 mt-0.5">最新情報を確認できます</p>
+                    </div>
+                    <button id="close-updates-modal-btn" type="button" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition shrink-0">閉じる</button>
+                </div>
+
+                <!-- タブ切替 -->
+                <div class="grid grid-cols-2 gap-2 p-3 bg-slate-100 border-b border-slate-200 shrink-0">
+                    <button id="tab-changelog-btn" type="button" class="py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition bg-indigo-600 text-white shadow">
+                        🛠 修正情報（更新履歴）
+                    </button>
+                    <button id="tab-qa-btn" type="button" class="py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50">
+                        ❓ よくある質問（Q&A）
+                    </button>
+                </div>
+
+                <!-- 本文エリア -->
+                <div id="updates-modal-body" class="p-4 sm:p-6 overflow-y-auto space-y-3 flex-1"></div>
+            </div>
+        </div>
     <!-- ライトボックスモーダル -->
     <div id="image-lightbox-modal" class="hidden fixed inset-0 bg-black/85 z-[100] flex items-center justify-center p-4 cursor-pointer">
         <div class="relative max-w-5xl max-h-[90vh] flex flex-col items-center">
@@ -2421,6 +2449,175 @@
                 exportFileList.appendChild(row);
             });
         }
+        
+        // ▼ 追加：修正情報・Q&A モーダル制御 ▼
+                const UPDATES_JSON_URL = './updates.json';
+                const SEEN_UPDATES_KEY = 'raku_shashincho_seen_updates_version';
+
+                const openUpdatesModalBtn = document.getElementById('open-updates-modal-btn');
+                const closeUpdatesModalBtn = document.getElementById('close-updates-modal-btn');
+                const updatesQaModal = document.getElementById('updates-qa-modal');
+                const updatesNewBadge = document.getElementById('updates-new-badge');
+                const updatesVersionLabel = document.getElementById('updates-version-label');
+                const tabChangelogBtn = document.getElementById('tab-changelog-btn');
+                const tabQaBtn = document.getElementById('tab-qa-btn');
+                const updatesModalBody = document.getElementById('updates-modal-body');
+
+                let updatesDataCache = null;
+                let activeUpdatesTab = 'changelog';
+
+                async function fetchUpdatesData() {
+                    try {
+                        const res = await fetch(`${UPDATES_JSON_URL}?v=${Date.now()}`, { cache: 'no-store' });
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        const data = await res.json();
+                        updatesDataCache = data;
+
+                        if (data.version) {
+                            updatesVersionLabel.textContent = `最終更新: ${data.version}`;
+                            const seenVersion = localStorage.getItem(SEEN_UPDATES_KEY);
+                            if (seenVersion !== String(data.version)) {
+                                updatesNewBadge.classList.remove('hidden');
+                            } else {
+                                updatesNewBadge.classList.add('hidden');
+                            }
+                        }
+                        return data;
+                    } catch (err) {
+                        console.warn('updates.json の読み込みに失敗:', err);
+                        return null;
+                    }
+                }
+
+                function setUpdatesTab(tabName) {
+                    activeUpdatesTab = tabName;
+                    if (tabName === 'changelog') {
+                        tabChangelogBtn.className = 'py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition bg-indigo-600 text-white shadow';
+                        tabQaBtn.className = 'py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50';
+                    } else {
+                        tabQaBtn.className = 'py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition bg-indigo-600 text-white shadow';
+                        tabChangelogBtn.className = 'py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50';
+                    }
+                    renderUpdatesModalBody();
+                }
+
+                function renderUpdatesModalBody() {
+                    updatesModalBody.innerHTML = '';
+
+                    if (!updatesDataCache) {
+                        const msgDiv = document.createElement('div');
+                        msgDiv.className = 'bg-amber-50 border border-amber-300 text-amber-900 rounded-xl p-4 text-sm font-bold';
+                        msgDiv.textContent = '更新情報・Q&Aを読み込めませんでした。通信環境を確認するか、しばらくしてから再度お試しください。';
+                        updatesModalBody.appendChild(msgDiv);
+                        return;
+                    }
+
+                    if (activeUpdatesTab === 'changelog') {
+                        const list = Array.isArray(updatesDataCache.changelog) ? updatesDataCache.changelog : [];
+                        if (list.length === 0) {
+                            const empty = document.createElement('p');
+                            empty.className = 'text-sm text-slate-500 text-center py-6';
+                            empty.textContent = '現在登録されている修正情報はありません。';
+                            updatesModalBody.appendChild(empty);
+                            return;
+                        }
+
+                        list.forEach(item => {
+                            const card = document.createElement('div');
+                            card.className = 'bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-1.5';
+
+                            if (item.date) {
+                                const dateBadge = document.createElement('span');
+                                dateBadge.className = 'inline-block bg-indigo-100 text-indigo-900 text-xs font-bold px-2.5 py-0.5 rounded-full';
+                                dateBadge.textContent = item.date;
+                                card.appendChild(dateBadge);
+                            }
+
+                            const titleEl = document.createElement('h3');
+                            titleEl.className = 'text-sm sm:text-base font-bold text-slate-800';
+                            titleEl.textContent = item.title || '';
+                            card.appendChild(titleEl);
+
+                            if (item.detail) {
+                                const detailEl = document.createElement('p');
+                                detailEl.className = 'text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line';
+                                detailEl.textContent = item.detail;
+                                card.appendChild(detailEl);
+                            }
+
+                            updatesModalBody.appendChild(card);
+                        });
+                    } else {
+                        const qaList = Array.isArray(updatesDataCache.qa) ? updatesDataCache.qa : [];
+                        if (qaList.length === 0) {
+                            const empty = document.createElement('p');
+                            empty.className = 'text-sm text-slate-500 text-center py-6';
+                            empty.textContent = '現在登録されているQ&Aはありません。';
+                            updatesModalBody.appendChild(empty);
+                            return;
+                        }
+
+                        qaList.forEach(item => {
+                            const card = document.createElement('div');
+                            card.className = 'bg-white border-2 border-slate-200 rounded-xl p-4 space-y-2';
+
+                            const qEl = document.createElement('p');
+                            qEl.className = 'text-sm sm:text-base font-bold text-slate-800 flex items-start gap-2';
+                            const qMark = document.createElement('span');
+                            qMark.className = 'bg-emerald-600 text-white text-xs font-bold px-2 py-0.5 rounded shrink-0 mt-0.5';
+                            qMark.textContent = 'Q';
+                            const qText = document.createElement('span');
+                            qText.textContent = item.q || '';
+                            qEl.appendChild(qMark);
+                            qEl.appendChild(qText);
+
+                            const aEl = document.createElement('p');
+                            aEl.className = 'text-xs sm:text-sm text-slate-700 leading-relaxed pl-7 whitespace-pre-line';
+                            aEl.textContent = item.a || '';
+
+                            card.appendChild(qEl);
+                            card.appendChild(aEl);
+                            updatesModalBody.appendChild(card);
+                        });
+                    }
+                }
+
+                async function openUpdatesModal() {
+                    updatesQaModal.classList.remove('hidden');
+                    document.body.classList.add('modal-open');
+                    setUpdatesTab(activeUpdatesTab);
+
+                    if (!updatesDataCache) {
+                        await fetchUpdatesData();
+                        renderUpdatesModalBody();
+                    }
+
+                    if (updatesDataCache && updatesDataCache.version) {
+                        localStorage.setItem(SEEN_UPDATES_KEY, String(updatesDataCache.version));
+                        updatesNewBadge.classList.add('hidden');
+                    }
+                }
+
+                function closeUpdatesModal() {
+                    updatesQaModal.classList.add('hidden');
+                    if (
+                        photoEditorModal.classList.contains('hidden') &&
+                        exportModal.classList.contains('hidden')
+                    ) {
+                        document.body.classList.remove('modal-open');
+                    }
+                }
+
+                openUpdatesModalBtn.addEventListener('click', openUpdatesModal);
+                closeUpdatesModalBtn.addEventListener('click', closeUpdatesModal);
+                updatesQaModal.addEventListener('click', (e) => {
+                    if (e.target === updatesQaModal) closeUpdatesModal();
+                });
+                tabChangelogBtn.addEventListener('click', () => setUpdatesTab('changelog'));
+                tabQaBtn.addEventListener('click', () => setUpdatesTab('qa'));
+
+                // ページ読み込み時に新着バッジ有無だけ確認
+                fetchUpdatesData();
 
         // 初期表示時のステップバー状態反映
         updateWizardProgressUI(1);
@@ -2548,7 +2745,7 @@
                 background: white !important;
                 color: black !important;
             }
-            header, nav, #step1-upload-section, #drop-zone, #controls, #step-view-container, #groups-container, #bottom-action-bar, #photo-editor-modal, #number-manager-modal, #export-modal, #image-lightbox-modal {
+            header, nav, #step1-upload-section, #drop-zone, #controls, #step-view-container, #groups-container, #bottom-action-bar, #photo-editor-modal, #number-manager-modal, #export-modal, #updates-qa-modal, #image-lightbox-modal {
                 display: none !important;
             }
             .print-page {
