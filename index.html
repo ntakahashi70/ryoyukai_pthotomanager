@@ -2744,8 +2744,12 @@
             body {
                 background: white !important;
                 color: black !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                min-height: 0 !important;
+                height: auto !important;
             }
-            header, nav, #step1-upload-section, #drop-zone, #controls, #step-view-container, #groups-container, #bottom-action-bar, #photo-editor-modal, #number-manager-modal, #export-modal, #updates-qa-modal, #image-lightbox-modal {
+            body > *:not(#print-area) {
                 display: none !important;
             }
             .print-page {
@@ -2849,6 +2853,7 @@
                 background: #fafafa;
                 border-radius: 2px;
             }
+            .print-page:last-child,
             .print-page:last-of-type {
                 page-break-after: auto !important;
                 break-after: auto !important;
