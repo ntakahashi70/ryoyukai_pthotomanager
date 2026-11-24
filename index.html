@@ -1693,9 +1693,10 @@
             const animalConfig = ANIMAL_TYPES.find(a => a.id === group.type);
             const selectedCount = group.selectedIndices.filter(Boolean).length;
 
-            // 大きな動物選択ボタン
+            // 大きな動物選択ボタン（「未分類」を除外）
             let typeButtonsHtml = '';
-            ANIMAL_TYPES.filter(a => a.id !== 'unclassified').forEach(a => {
+            const stepAnimalList = ANIMAL_TYPES.filter(a => a.id !== 'unclassified');
+            stepAnimalList.forEach(a => {
                 const isActive = group.type === a.id;
                 const btnClass = isActive
                     ? 'bg-emerald-600 text-white shadow-md ring-4 ring-emerald-300 border-2 border-emerald-700'
@@ -1769,43 +1770,56 @@
                 </div>
             `;
 
-            stepViewContainer.innerHTML = `
-                <div id="step-counter-anchor" class="bg-white shadow rounded-2xl p-3.5 sm:p-4 border border-slate-200 flex items-center justify-between gap-2">
-                    <button type="button" id="step-prev-btn" ${gIndex === 0 ? 'disabled' : ''} class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold border transition ${gIndex === 0 ? 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'}">← 前の個体へ</button>
+            const stepNavBoxHtml = `
+                <div class="bg-white shadow rounded-2xl p-3.5 sm:p-4 border border-slate-200 flex items-center justify-between gap-2">
+                    <button type="button" ${gIndex === 0 ? 'disabled' : ''} class="step-prev-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold border transition ${gIndex === 0 ? 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'}">← 前の個体へ</button>
                     <div class="text-center">
                         <span class="text-base sm:text-xl font-bold text-slate-800">${gIndex + 1} <span class="text-xs sm:text-sm font-normal text-slate-500">/ ${groups.length} 件目</span></span>
                     </div>
-                    <button type="button" id="step-next-btn" class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-sm transition">${gIndex === groups.length - 1 ? '確認完了へ →' : 'スキップして次へ →'}</button>
+                    <button type="button" class="step-next-btn bg-slate-700 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-sm transition">${gIndex === groups.length - 1 ? '確認完了へ →' : 'スキップして次へ →'}</button>
                 </div>
-                ${cardBodyHtml}
             `;
 
-            document.getElementById('step-prev-btn').addEventListener('click', () => {
-                if (currentStepIndex > 0) {
-                    currentStepIndex--;
-                    renderStepView();
-                }
+            stepViewContainer.innerHTML = `
+                <div id="step-counter-anchor">${stepNavBoxHtml}</div>
+                ${cardBodyHtml}
+                ${stepNavBoxHtml}
+            `;
+
+            stepViewContainer.querySelectorAll('.step-prev-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (currentStepIndex > 0) {
+                        currentStepIndex--;
+                        renderStepView();
+                        const anchor = document.getElementById('controls');
+                        if (anchor) anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
             });
-            document.getElementById('step-next-btn').addEventListener('click', () => {
-                if (currentStepIndex < groups.length - 1) {
-                    currentStepIndex++;
-                    renderStepView();
-                } else {
-                    isStepCompleted = true;
-                    renderStepView();
-                }
+            stepViewContainer.querySelectorAll('.step-next-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (currentStepIndex < groups.length - 1) {
+                        currentStepIndex++;
+                        renderStepView();
+                    } else {
+                        isStepCompleted = true;
+                        renderStepView();
+                    }
+                    const anchor = document.getElementById('controls');
+                    if (anchor) anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
             });
 
             stepViewContainer.querySelectorAll('[data-step-type-btn]').forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    groups[gIndex].type = e.currentTarget.dataset.stepTypeBtn;
-                    // 未選択状態なら最初の写真を自動採用してあげる（操作の手間削減）
-                    if (!groups[gIndex].isEmpty && groups[gIndex].selectedIndices.filter(Boolean).length === 0 && groups[gIndex].photos.length > 0) {
+                    const selectedType = e.currentTarget.dataset.stepTypeBtn;
+                    groups[gIndex].type = selectedType;
+                    // 「未分類」以外で未選択状態なら、最初の写真を自動採用してあげる（操作の手間削減）
+                    if (selectedType !== 'unclassified' && !groups[gIndex].isEmpty && groups[gIndex].selectedIndices.filter(Boolean).length === 0 && groups[gIndex].photos.length > 0) {
                         groups[gIndex].selectedIndices[0] = true;
                     }
                     normalizeGroupSelections(groups[gIndex]);
                     updateGroupNumbers();
-
                     if (currentStepIndex < groups.length - 1) {
                         currentStepIndex++;
                     } else {
@@ -2406,7 +2420,9 @@
 
                 const btn = row.querySelector('.download-part-btn');
                 const pdfFile = new File([item.blob], filename, { type: 'application/pdf' });
-                const canSharePdf = !!(navigator.canShare && navigator.canShare({ files: [pdfFile] }));
+                const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+                    (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
+                const canSharePdf = isMobileDevice && !!(navigator.canShare && navigator.canShare({ files: [pdfFile] }));
 
                 btn.addEventListener('click', async () => {
                     const markAsSaved = () => {
