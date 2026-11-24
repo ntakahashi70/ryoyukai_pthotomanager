@@ -261,6 +261,7 @@
             </div>
 
             <div class="p-4 sm:p-6 overflow-y-auto space-y-4">
+                <div id="export-summary-box" class="bg-slate-50 border-2 border-slate-300 rounded-xl p-3.5 sm:p-4 space-y-1.5"></div>
                 <!-- 1. 選択画面 -->
                 <div id="export-choice-view" class="space-y-3">
                     <button id="export-normal-btn" type="button" class="w-full text-left bg-white hover:bg-emerald-50 border-2 border-emerald-500 rounded-2xl p-4 sm:p-5 shadow-sm transition flex items-start gap-4">
@@ -964,6 +965,31 @@
             }
             updateWizardProgressUI(4);
             revokeGeneratedPdfUrls();
+            // ▼ 追加：出力内容の集計表示を生成 ▼
+            const summaryBox = document.getElementById('export-summary-box');
+            if (summaryBox) {
+                const counts = [];
+                let totalExportCount = 0;
+                ANIMAL_TYPES.forEach(a => {
+                    if (a.id === 'unclassified') return;
+                    const c = groups.filter(g => g.type === a.id).length;
+                    if (c > 0) {
+                        counts.push(`${a.name}：${c}頭`);
+                        totalExportCount += c;
+                    }
+                });
+                const unclassifiedCount = groups.filter(g => g.type === 'unclassified').length;
+                const unclassifiedHtml = unclassifiedCount > 0
+                    ? `<p class="text-xs sm:text-sm font-bold text-amber-800 bg-amber-100 border border-amber-300 px-3 py-1.5 rounded-lg mt-2">⚠️ 「未分類」が ${unclassifiedCount}件 あります（未分類は印刷されません）</p>`
+                    : `<p class="text-xs font-bold text-emerald-700 mt-1">✓ すべての個体が分類済みです</p>`;
+
+                summaryBox.innerHTML = `
+                    <p class="text-xs font-bold text-slate-500">▼ 今回出力される内容（合計 ${totalExportCount}頭）：</p>
+                    <p class="text-sm sm:text-base font-bold text-slate-800">${counts.join(' ／ ')}</p>
+                    ${unclassifiedHtml}
+                `;
+            }
+
             exportChoiceView.classList.remove('hidden');
             exportProgressView.classList.add('hidden');
             exportResultView.classList.add('hidden');
@@ -1810,9 +1836,22 @@
                 });
             });
 
+            // ▼ ここから差し替え（押下時に0.25秒だけ緑色に光らせてから次へ進む） ▼
+            let isTransitioningStep = false;
             stepViewContainer.querySelectorAll('[data-step-type-btn]').forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    const selectedType = e.currentTarget.dataset.stepTypeBtn;
+                    if (isTransitioningStep) return;
+                    isTransitioningStep = true;
+
+                    const clickedBtn = e.currentTarget;
+                    const selectedType = clickedBtn.dataset.stepTypeBtn;
+
+                    // 他のボタンの選択色を一旦リセットし、押したボタンを濃い緑＆光る枠にする
+                    stepViewContainer.querySelectorAll('[data-step-type-btn]').forEach(b => {
+                        b.className = 'py-4 sm:py-5 px-2 rounded-2xl text-base sm:text-xl font-bold transition text-center shadow-sm bg-white text-slate-800 border-2 border-slate-300';
+                    });
+                    clickedBtn.className = 'py-4 sm:py-5 px-2 rounded-2xl text-base sm:text-xl font-bold transition text-center shadow-lg bg-emerald-600 text-white ring-4 ring-emerald-300 border-2 border-emerald-700 scale-[1.03]';
+
                     groups[gIndex].type = selectedType;
                     // 「未分類」以外で未選択状態なら、最初の写真を自動採用してあげる（操作の手間削減）
                     if (selectedType !== 'unclassified' && !groups[gIndex].isEmpty && groups[gIndex].selectedIndices.filter(Boolean).length === 0 && groups[gIndex].photos.length > 0) {
@@ -1820,16 +1859,20 @@
                     }
                     normalizeGroupSelections(groups[gIndex]);
                     updateGroupNumbers();
-                    if (currentStepIndex < groups.length - 1) {
-                        currentStepIndex++;
-                    } else {
-                        isStepCompleted = true;
-                    }
-                    renderStepView();
-                    const anchor = document.getElementById('controls');
-                    if (anchor) {
-                        anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
+
+                    // 0.25秒（250ms）後に次の個体へ画面を切り替える
+                    setTimeout(() => {
+                        if (currentStepIndex < groups.length - 1) {
+                            currentStepIndex++;
+                        } else {
+                            isStepCompleted = true;
+                        }
+                        renderStepView();
+                        const anchor = document.getElementById('controls');
+                        if (anchor) {
+                            anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    }, 250);
                 });
             });
 
@@ -2634,6 +2677,13 @@
 
                 // ページ読み込み時に新着バッジ有無だけ確認
                 fetchUpdatesData();
+
+                window.addEventListener('beforeunload', (e) => {
+                if (groups.length > 0) {
+                e.preventDefault();
+                e.returnValue = ''; // ブラウザ標準の離脱確認ダイアログを表示
+            }
+        });
 
         // 初期表示時のステップバー状態反映
         updateWizardProgressUI(1);
