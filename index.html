@@ -427,6 +427,30 @@
                 <div id="updates-modal-body" class="p-4 sm:p-6 overflow-y-auto space-y-3 flex-1"></div>
             </div>
         </div>
+
+    <div id="unselected-warning-modal" class="hidden fixed inset-0 bg-slate-900/75 z-[90] flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border-2 border-amber-400">
+            <div class="bg-amber-500 text-white px-5 py-4 flex items-center gap-2.5">
+                <span class="text-2xl">⚠️</span>
+                <h3 class="text-lg sm:text-xl font-bold">写真が1枚も選ばれていません</h3>
+            </div>
+            <div class="p-5 sm:p-6 space-y-4">
+                <p class="text-sm sm:text-base text-slate-700 leading-relaxed">
+                    <span id="unselected-warning-animal-name" class="font-bold text-emerald-700"></span> が選ばれましたが、採用する写真が選択されていません。どのようにしますか？
+                </p>
+                <div class="space-y-2.5 pt-1">
+                    <button id="warn-skip-btn" type="button" class="w-full bg-slate-700 hover:bg-slate-800 text-white py-3.5 px-4 rounded-xl font-bold text-sm sm:text-base shadow transition text-left flex items-center justify-between">
+                        <span>スキップする</span>
+                        <span>→</span>
+                    </button>
+                    <button id="warn-cancel-btn" type="button" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 py-3.5 px-4 rounded-xl font-bold text-sm sm:text-base transition text-center mt-1">
+                        戻って写真を選ぶ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ライトボックスモーダル -->
     <div id="image-lightbox-modal" class="hidden fixed inset-0 bg-black/85 z-[100] flex items-center justify-center p-4 cursor-pointer">
         <div class="relative max-w-5xl max-h-[90vh] flex flex-col items-center">
@@ -1025,6 +1049,35 @@
         export10mbBtn.addEventListener('click', () => {
             generateSplitPdfs(9.0 * 1024 * 1024, '10MB以下（ネットプリント用）');
         });
+
+        function confirmUnselectedAction(animalId) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('unselected-warning-modal');
+                const animalNameEl = document.getElementById('unselected-warning-animal-name');
+                const skipBtn = document.getElementById('warn-skip-btn');
+                const cancelBtn = document.getElementById('warn-cancel-btn');
+
+                const animalObj = ANIMAL_TYPES.find(a => a.id === animalId);
+                animalNameEl.textContent = animalObj ? `【${animalObj.name}】` : '';
+
+                // 一覧表示モードの時は「スキップする」を非表示にする
+                if (skipBtn) {
+                    skipBtn.classList.toggle('hidden', viewMode === 'list');
+                }
+
+                modal.classList.remove('hidden');
+
+                const cleanup = (result) => {
+                    modal.classList.add('hidden');
+                    if (skipBtn) skipBtn.onclick = null;
+                    cancelBtn.onclick = null;
+                    resolve(result);
+                };
+
+                if (skipBtn) skipBtn.onclick = () => cleanup('skip');
+                cancelBtn.onclick = () => cleanup('cancel');
+            });
+        }
 
         // ステップ3：番号整理モーダル制御
         function openNumberManagerModal() {
@@ -1721,12 +1774,17 @@
 
             // 大きな動物選択ボタン（「未分類」を除外）
             let typeButtonsHtml = '';
-            const stepAnimalList = ANIMAL_TYPES.filter(a => a.id !== 'unclassified');
+            const stepAnimalList = [
+                ...ANIMAL_TYPES.filter(a => a.id !== 'unclassified'),
+                ...ANIMAL_TYPES.filter(a => a.id === 'unclassified')
+            ];
             stepAnimalList.forEach(a => {
                 const isActive = group.type === a.id;
                 const btnClass = isActive
                     ? 'bg-emerald-600 text-white shadow-md ring-4 ring-emerald-300 border-2 border-emerald-700'
-                    : 'bg-white text-slate-800 hover:bg-emerald-50 hover:border-emerald-400 border-2 border-slate-300';
+                    : (a.id === 'unclassified'
+                        ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:border-slate-400 border-2 border-slate-300'
+                        : 'bg-white text-slate-800 hover:bg-emerald-50 hover:border-emerald-400 border-2 border-slate-300');
                 typeButtonsHtml += `<button type="button" data-step-type-btn="${a.id}" class="py-4 sm:py-5 px-2 rounded-2xl text-base sm:text-xl font-bold transition text-center shadow-sm ${btnClass}">${a.name}</button>`;
             });
 
@@ -1836,15 +1894,44 @@
                 });
             });
 
-            // ▼ ここから差し替え（押下時に0.25秒だけ緑色に光らせてから次へ進む） ▼
+            // ▼ ここから差し替え（未採用時は警告を出してユーザーに判断させる） ▼
             let isTransitioningStep = false;
             stepViewContainer.querySelectorAll('[data-step-type-btn]').forEach(btn => {
-                btn.addEventListener('click', (e) => {
+                btn.addEventListener('click', async (e) => {
                     if (isTransitioningStep) return;
-                    isTransitioningStep = true;
 
                     const clickedBtn = e.currentTarget;
                     const selectedType = clickedBtn.dataset.stepTypeBtn;
+                    const isUnselected = selectedType !== 'unclassified'
+                        && !groups[gIndex].isEmpty
+                        && groups[gIndex].selectedIndices.filter(Boolean).length === 0
+                        && groups[gIndex].photos.length > 0;
+
+                    // 1枚も採用されていない場合は警告モーダルを表示
+                    if (isUnselected) {
+                        const action = await confirmUnselectedAction(selectedType);
+                        if (action === 'cancel') return; // 「戻って写真を選ぶ」
+                        if (action === 'skip') {
+                            // 「スキップする」：動物種を割り当てず、「スキップして次へ」と同じ処理を実行
+                            if (currentStepIndex < groups.length - 1) {
+                                currentStepIndex++;
+                                renderStepView();
+                            } else {
+                                isStepCompleted = true;
+                                renderStepView();
+                            }
+                            const anchor = document.getElementById('controls');
+                            if (anchor) anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            return;
+                        }
+                        if (action === 'no_photo') {
+                            groups[gIndex].photos = [];
+                            groups[gIndex].selectedIndices = [];
+                            groups[gIndex].isEmpty = true;
+                        }
+                    }
+
+                    isTransitioningStep = true;
 
                     // 他のボタンの選択色を一旦リセットし、押したボタンを濃い緑＆光る枠にする
                     stepViewContainer.querySelectorAll('[data-step-type-btn]').forEach(b => {
@@ -1853,10 +1940,6 @@
                     clickedBtn.className = 'py-4 sm:py-5 px-2 rounded-2xl text-base sm:text-xl font-bold transition text-center shadow-lg bg-emerald-600 text-white ring-4 ring-emerald-300 border-2 border-emerald-700 scale-[1.03]';
 
                     groups[gIndex].type = selectedType;
-                    // 「未分類」以外で未選択状態なら、最初の写真を自動採用してあげる（操作の手間削減）
-                    if (selectedType !== 'unclassified' && !groups[gIndex].isEmpty && groups[gIndex].selectedIndices.filter(Boolean).length === 0 && groups[gIndex].photos.length > 0) {
-                        groups[gIndex].selectedIndices[0] = true;
-                    }
                     normalizeGroupSelections(groups[gIndex]);
                     updateGroupNumbers();
 
@@ -2018,12 +2101,20 @@
 
             bindPhotoCardEvents(groupsContainer);
             groupsContainer.querySelectorAll('[data-group-type-btn]').forEach(btn => {
-                btn.addEventListener('click', (e) => {
+                btn.addEventListener('click', async (e) => {
                     const gIdx = parseInt(e.target.dataset.groupTypeBtn);
-                    groups[gIdx].type = e.target.dataset.type;
-                    if (!groups[gIdx].isEmpty && groups[gIdx].selectedIndices.filter(Boolean).length === 0 && groups[gIdx].photos.length > 0) {
-                        groups[gIdx].selectedIndices[0] = true;
+                    const selectedType = e.target.dataset.type;
+                    const isUnselected = selectedType !== 'unclassified'
+                        && !groups[gIdx].isEmpty
+                        && groups[gIdx].selectedIndices.filter(Boolean).length === 0
+                        && groups[gIdx].photos.length > 0;
+
+                    if (isUnselected) {
+                        const action = await confirmUnselectedAction(selectedType);
+                        if (action === 'cancel' || action === 'skip') return;
                     }
+
+                    groups[gIdx].type = selectedType;
                     normalizeGroupSelections(groups[gIdx]);
                     updateGroupNumbers();
                     renderGroups();
