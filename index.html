@@ -133,7 +133,7 @@
             <div class="flex flex-wrap items-center justify-between gap-2">
                 <div class="flex items-center gap-2">
                     <span id="loaded-photo-summary" class="text-xs sm:text-sm font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg"></span>
-                    <button id="reopen-upload-btn" type="button" class="text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg border border-slate-300 transition">＋ 写真を追加・再読込</button>
+                    <button id="reopen-upload-btn" type="button" class="text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg border border-slate-300 transition">＋ 写真を再読込</button>
                 </div>
 
                 <!-- 表示モード切替（大きく分かりやすく） -->
@@ -658,7 +658,7 @@
                 reopenUploadBtn.textContent = '▲ 枠を閉じる';
             } else {
                 step1UploadSection.classList.add('hidden');
-                reopenUploadBtn.textContent = '＋ 写真を追加・再読込';
+                reopenUploadBtn.textContent = '＋ 写真を再読込';
             }
         });
 
@@ -1314,11 +1314,16 @@
                     // 読み込んだ写真と作業データの一致数を確認
                     let expectedCount = 0;
                     let matchedCount = 0;
+                    const restoredPhotoNames = new Set();
+
                     savedData.groups.forEach(savedG => {
                         if (!savedG.isEmpty && savedG.photoNames) {
                             savedG.photoNames.forEach(pn => {
                                 expectedCount++;
-                                if (rawPhotos.some(rp => rp.name === pn.name)) matchedCount++;
+                                if (rawPhotos.some(rp => rp.name === pn.name)) {
+                                    matchedCount++;
+                                    restoredPhotoNames.add(pn.name);
+                                }
                             });
                         }
                     });
@@ -1336,7 +1341,8 @@
                         }
                     }
 
-                    groups = await Promise.all(savedData.groups.map(async savedG => {
+                    // 1. 作業データに含まれる写真を復元
+                    const restoredGroups = await Promise.all(savedData.groups.map(async savedG => {
                         if (savedG.isEmpty) return { photos: [], type: savedG.type, selectedIndices: [], isEmpty: true };
                         const matchedPhotos = await Promise.all(savedG.photoNames.map(async pn => {
                             const basePhoto = rawPhotos.find(rp => rp.name === pn.name) || {
@@ -1360,6 +1366,35 @@
                         return { photos: matchedPhotos, type: savedG.type, selectedIndices: savedG.selectedIndices, isEmpty: false };
                     }));
 
+                    // 2. 作業データに含まれていなかった写真（新規追加分）を「未分類」としてグループ化
+                    const extraPhotos = rawPhotos
+                        .filter(rp => !restoredPhotoNames.has(rp.name))
+                        .sort((a, b) => a.dateTime - b.dateTime);
+
+                    const extraGroups = [];
+                    if (extraPhotos.length > 0) {
+                        const thresholdMs = (parseInt(thresholdSelect.value, 10) || 15) * 60 * 1000;
+                        let currentExtraGroup = [];
+                        extraPhotos.forEach(photo => {
+                            if (currentExtraGroup.length === 0) {
+                                currentExtraGroup.push(photo);
+                            } else {
+                                const lastPhoto = currentExtraGroup[currentExtraGroup.length - 1];
+                                if (photo.dateTime - lastPhoto.dateTime <= thresholdMs) {
+                                    currentExtraGroup.push(photo);
+                                } else {
+                                    extraGroups.push(createGroupObj(currentExtraGroup)); // type: 'unclassified'
+                                    currentExtraGroup = [photo];
+                                }
+                            }
+                        });
+                        if (currentExtraGroup.length > 0) {
+                            extraGroups.push(createGroupObj(currentExtraGroup));
+                        }
+                    }
+
+                    groups = [...restoredGroups, ...extraGroups];
+
                     updateGroupNumbers();
                     currentStepIndex = 0;
                     isStepCompleted = false;
@@ -1367,10 +1402,14 @@
                     dropZone.classList.remove('hidden');
                     onFilesLoadedAndGrouped();
 
+                    const extraMsg = extraPhotos.length > 0
+                        ? `\n（作業データになかった新規写真 ${extraPhotos.length} 枚を「未分類」として ${extraGroups.length} 件追加しました）`
+                        : '';
+
                     if (matchedCount < expectedCount) {
-                        alert(`前回の作業データを読み込みました！\n（一致した写真: ${matchedCount} / ${expectedCount} 枚）`);
+                        alert(`前回の作業データを読み込みました！\n（一致した写真: ${matchedCount} / ${expectedCount} 枚）${extraMsg}`);
                     } else {
-                        alert('前回の作業データを読み込みました！');
+                        alert(`前回の作業データを読み込みました！${extraMsg}`);
                     }
                 } catch (err) {
                     alert('保存ファイルの読み込みに失敗しました。');
@@ -1632,7 +1671,7 @@
 
             // アップロード枠を自動で閉じて画面をスッキリさせ、手順②「1件ずつ仕分け」へ自動誘導
             step1UploadSection.classList.add('hidden');
-            reopenUploadBtn.textContent = '＋ 写真を追加・再読込';
+            reopenUploadBtn.textContent = '＋ 写真を再読込';
 
             viewMode = 'step';
             currentStepIndex = 0;
@@ -1811,10 +1850,12 @@
                         <span class="text-xs sm:text-sm text-slate-500 font-medium">撮影: ${group.photos[0].dateTime.toLocaleString('jp-JP')}</span>
                     </div>
 
-                    <!-- ガイド案内 -->
+                    <!-- ガイド案内（1件目のみ表示） -->
+                    ${gIndex === 0 ? `
                     <div class="bg-sky-50 border border-sky-200 rounded-xl p-3 text-xs sm:text-sm text-sky-900 font-bold">
                         💡 使う写真をタップして「✓ 採用中」にし、下の【動物の種類】を押すと自動で次へ進みます。
                     </div>
+                    ` : ''}
 
                     <!-- 写真一覧 -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
