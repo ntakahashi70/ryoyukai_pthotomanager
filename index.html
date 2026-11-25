@@ -65,7 +65,7 @@
                 <!-- Step 2 -->
                 <button id="nav-step-2" type="button" disabled class="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2.5 px-2 rounded-xl border-2 text-center transition">
                     <span class="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold shrink-0">2</span>
-                    <span class="text-[11px] sm:text-sm font-bold leading-tight">種類・写真を<br class="sm:hidden">選ぶ</span>
+                    <span class="text-[11px] sm:text-sm font-bold leading-tight">種類・写真<br class="sm:hidden">を選ぶ</span>
                 </button>
                 <!-- Step 3 -->
                 <button id="nav-step-3" type="button" disabled class="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2.5 px-2 rounded-xl border-2 text-center transition">
@@ -1157,9 +1157,11 @@
                 const g = item.group;
                 const idx = item.index;
                 const div = document.createElement('div');
+                const selectedCount = g.selectedIndices ? g.selectedIndices.filter(Boolean).length : 0;
+                const isTreatAsNoPhoto = g.isEmpty || (g.type !== 'unclassified' && selectedCount === 0);
 
                 let thumbsHtml = '';
-                if (!g.isEmpty) {
+                if (!isTreatAsNoPhoto) {
                     g.photos.forEach((p, pIdx) => {
                         if (g.selectedIndices[pIdx]) {
                             thumbsHtml += `<img src="${p.url}" data-lightbox-url="${p.url}" data-lightbox-cap="連番: No.${g.serialNumber} (${p.name})" class="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg border-2 border-slate-200 cursor-pointer hover:opacity-80 transition shadow-sm" title="クリックで拡大">`;
@@ -1172,7 +1174,7 @@
                     thumbsHtml = `<span class="bg-amber-100 text-amber-900 border border-amber-300 text-xs sm:text-sm font-bold px-3 py-1.5 rounded-lg">⚠️ 撮影写真なし</span>`;
                 }
 
-                div.className = g.isEmpty
+                div.className = isTreatAsNoPhoto
                     ? 'bg-amber-50/80 border-2 border-amber-300 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3'
                     : 'bg-white border-2 border-slate-200 p-4 rounded-xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3';
 
@@ -1181,7 +1183,7 @@
                         <span class="bg-slate-800 text-white font-bold px-3.5 py-2 rounded-xl text-sm sm:text-base shrink-0">No.${g.serialNumber}</span>
                         <div class="flex items-center gap-2 flex-wrap">${thumbsHtml}</div>
                         <div class="text-xs sm:text-sm text-slate-600 ml-1">
-                            <span class="font-bold text-slate-700 block">${g.isEmpty ? '写真なし枠' : g.photos.filter((_, i) => g.selectedIndices[i]).length + '枚採用中'}</span>
+                            <span class="font-bold text-slate-700 block">${isTreatAsNoPhoto ? '写真なし枠' : selectedCount + '枚採用中'}</span>
                         </div>
                     </div>
                     <div class="flex flex-wrap items-center gap-1.5 shrink-0 self-end sm:self-center">
@@ -2223,7 +2225,8 @@
 
             if (task.mode === 'deer') {
                 const group = task.group;
-                if (group.isEmpty) {
+                const selectedPhotos = group.photos.filter((_, pIdx) => group.selectedIndices[pIdx]);
+                if (group.isEmpty || selectedPhotos.length === 0) {
                     const emptyJpg = await renderCanvasToJpgBytes(1000, 320, (ctx, w, h) => {
                         ctx.fillStyle = '#fafafa';
                         ctx.fillRect(0, 0, w, h);
@@ -2803,14 +2806,13 @@
                         const seqText = `連番: No.${group.serialNumber}`;
                         let headerHtml = `<div class="print-header">【 駆除写真帳：シカ 】 ${seqText}</div>`;
                         
+                        const selectedPhotos = group.photos.filter((_, pIdx) => group.selectedIndices[pIdx]);
                         let imgsHtml = '<div class="print-deer-grid">';
-                        if (group.isEmpty) {
+                        if (group.isEmpty || selectedPhotos.length === 0) {
                             imgsHtml += `<div class="print-empty-box">※ 撮影写真なし</div>`;
                         } else {
-                            group.photos.forEach((p, pIdx) => {
-                                if (group.selectedIndices[pIdx]) {
-                                    imgsHtml += `<div class="print-photo-box"><img src="${p.url}"></div>`;
-                                }
+                            selectedPhotos.forEach(p => {
+                                imgsHtml += `<div class="print-photo-box"><img src="${p.url}"></div>`;
                             });
                         }
                         imgsHtml += '</div>';
